@@ -1,0 +1,205 @@
+<html>
+<script>
+
+/*
+isValidWord (is in word dictionary) *JQUERY*
+isValidHand (isValidWord and contains only letters from hand or on board)
+isValidPlay (fits on board with current arrangement)
+Board.placeLetter = setValueAt
+Game
+Turn
+Player
+*/
+
+var HAND_SIZE = 7;
+var BOARD_HEIGHT = 15;
+var BOARD_WIDTH = 15;
+
+var LETTER_VALUES = {"A": 1, "B": 3, "C": 3, "D": 2, "E": 1, "F": 4, "G": 2, "H": 4, "I": 1, "J": 8, "K": 5, "L": 1, "M": 3, "N": 1, "O": 1, "P": 3, "Q": 10, "R": 1, "S": 1, "T": 1, "U": 1, "V": 4, "W": 4, "X": 8, "Y": 4, "Z": 10, " ": 0}
+
+var LETTER_COUNTS = {"A": 9, "B": 2, "C": 2, "D": 4, "E": 12, "F": 2, "G": 3, "H": 2, "I": 9, "J": 1, "K": 1, "L": 4, "M": 2, "N": 6, "O": 8, "P": 2, "Q": 1, "R": 6, "S": 4, "T": 6, "U": 4, "V": 2, "W": 2, "X": 1, "Y": 2, "Z": 1, " ": 2}
+
+function randomInteger(below) {
+	return Math.floor(Math.random() * below);
+}
+
+function forEachIn(object, action) {
+  for (var property in object) {
+    if (object.hasOwnProperty(property))
+      action(property, object[property]);
+  };
+}
+
+function calculateWordScore(word) {
+	score = 0;
+	forEachIn(word, function(letter, count) {
+		score += LETTER_VALUES[letter] * count;
+	});
+	return score;
+}
+
+function wordToString(word) {
+	var stringWord = "";
+	forEachIn(word, function(letter, count) {
+		for (var i = 0; i < count; i++) {
+			stringWord += letter;
+		};
+	});
+	return stringWord;
+}
+	
+function Bag() {
+	this.values = new Object(LETTER_COUNTS);
+}
+Bag.prototype.store = function(letter, value) {
+  this.values[letter] = value;
+};
+Bag.prototype.lookup = function(letter) {
+  return this.values[letter];
+};
+Bag.prototype.contains = function(letter) {
+  return Object.prototype.hasOwnProperty.call(this.values, letter) &&
+    Object.prototype.propertyIsEnumerable.call(this.values, letter);
+};
+Bag.prototype.each = function(action) {
+  forEachIn(this.values, action);
+};
+Bag.prototype.remove = function(letter) {
+	if (this.contains(letter) == false || (this.lookup(letter) < 0))
+		throw "Bag doesn't contain letter";
+	else
+		this.store(letter, this.lookup(letter)-1);
+}
+Bag.prototype.createArray = function() {
+	var lettersArray = [];
+	this.each(function(letter, value) {
+		for (var i = 0; i < value; i++) {
+			lettersArray.push(letter);
+			}
+		});
+	return lettersArray;
+}
+Bag.prototype.selectRandomLetter = function() {
+	lettersArray = this.createArray();
+	return lettersArray[randomInteger(lettersArray.length)];
+}
+Bag.prototype.count = function() {
+	lettersArray = this.createArray();
+	return lettersArray.length;
+}
+
+function Hand(startValues) {
+  this.values = startValues || {}
+}
+Hand.prototype.store = function(letter, value) {
+  this.values[letter] = value;
+};
+Hand.prototype.lookup = function(letter) {
+  return this.values[letter];
+};
+Hand.prototype.contains = function(letter) {
+  return Object.prototype.hasOwnProperty.call(this.values, letter) &&
+    Object.prototype.propertyIsEnumerable.call(this.values, letter);
+};
+Hand.prototype.each = function(action) {
+  forEachIn(this.values, action);
+};
+Hand.prototype.remove = function(letter) {
+	if (this.contains(letter) == false || (this.lookup(letter) < 0))
+		throw "Hand doesn't contain letter";
+	else
+		this.store(letter, this.lookup(letter)-1);
+}
+Hand.prototype.createArray = function() {
+	var lettersArray = [];
+	this.each(function(letter, value) {
+		for (var i = 0; i < value; i++) {
+			lettersArray.push(letter);
+			}
+		});
+	return lettersArray;
+Hand.prototype.grabLetter = function() {
+	try {
+	newLetter = bag.selectRandomLetter();
+	if (this.contains(newLetter) == false) 
+		this.store(newLetter, 1);
+	else
+		this.store(newLetter, this.lookup(newLetter)+1);
+	bag.remove(newLetter);
+	}
+	catch (error) {
+		throw "No bag initialized: " + error.message;
+	}
+}
+Hand.prototype.initialHand = function(HAND_SIZE) {
+	for (var i = 0; i < HAND_SIZE; i++) {
+		this.grabLetter();
+	};
+}
+/*
+Hand.prototype.isValidWordGivenHand = function(word) {
+	copy = this.createArray();
+	for (var i = 0; i < word.length; i++) {
+		if (copy.
+	};
+	return true;
+}
+*/
+
+bag = new Bag();
+hand = new Hand()
+console.log(hand);
+
+function Tile(x, y) {
+	this.x = x;
+	this.y = y;
+	}
+Tile.prototype.add = function(tileToAdd) {
+	return new Tile(this.x + tileToAdd.x, this.y + tileToAdd.y);
+	}
+Tile.prototype.isEqualTo = function(tileToCompare) {
+	return (this.x == tileToCompare.x) && (this.y == tileToCompare.y);
+	}
+	
+function Board(width, height) {
+  this.width = width;
+  this.height = height;
+  this.cells = new Array(width * height);
+}
+Board.prototype.valueAt = function(tile) {
+  return this.cells[tile.y * this.width + tile.x];
+};
+Board.prototype.setValueAt = function(tile, value) {
+  this.cells[tile.y * this.width + tile.x] = value;
+};
+Board.prototype.isInside = function(tile) {
+  return tile.x >= 0 && tile.y >= 0 &&
+         tile.x < this.width && tile.y < this.height;
+};
+Board.prototype.each = function(func) {
+	for (var i = 0; i < this.height; i++) {
+		for (var j = 0; j < this.width; j++) {
+			var tile = new Tile(i, j);
+			func(tile, this.valueAt(tile));
+		}
+	}
+};
+Board.prototype.toString = function() {
+	var boardWidth = this.width;
+	var stringBoard = "";
+	var i = 1;
+	this.each(function(tile, value) {
+		if (value == undefined)
+			stringBoard += " ";
+		else
+			stringBoard += value;
+		if (i % boardWidth == 0)
+			stringBoard += "\n";
+		i++;
+		});
+	return console.log(stringBoard);
+	}
+}
+	
+</script>
+</html>
