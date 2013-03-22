@@ -2,13 +2,19 @@
 <script>
 
 /*
+write test suite: isValidHand
+implement inheritence for Dictionary-like methods
+
 isValidWord (string is in word dictionary) *USE JQUERY*
-NEED TO TEST: isValidHand (contains only letters from hand and enough of those letters)
+isInline (are the tiles in the possible play all in a horizontal or vertical line?)
 isValidPlay (fits on board with current arrangement)
-	only allowed to place in the same horizontal or vertical sequence of empty spaces
-	empty space not currently occupied by tile (tile.set = false)
 	use same pattern as isValidHand but add characters on board to the copy of the hand in the correct positions
-Board initial create BOARD_HEIGHT x BOARD_WIDTH Tile objects all set to false
+Play.placeLetterFromHand
+Play.isValidWord
+Play.isInline
+Play.isValidPlay
+Play.isOccupied
+
 Board different special bonus positions
 Game
 Turn
@@ -136,110 +142,99 @@ Hand.prototype.grabLetter = function() {
 		throw "No bag initialized: " + error.message;
 	}
 }
-Hand.prototype.initialHand = function(HAND_SIZE) {
+Hand.prototype.initialHand = function() {
 	for (var i = 0; i < HAND_SIZE; i++) {
 		this.grabLetter();
 	};
 }
-Hand.prototype.isValidWordGivenHand = function(word) {
+Hand.prototype.isValidHand = function(word) {
 	copy = this.createArray();
 	for (var i = 0; i < word.length; i++) {
-		if (copy.find(word[i]) == -1)
+		if (copy.indexOf(word[i]) == -1)
 			return false;
 		else
-			delete copy.indexOf(word[i]);
+			delete copy[copy.indexOf(word[i])];
 	};
 	return true;
-}
+};
+Hand.prototype.drawHand = function() {
+	copy = this.createArray();
+	handString = "<table border=\"1\"> <tr>";
+	for (var i = 0; i < HAND_SIZE; i++) {
+		if (copy[i])
+			handString += "<td>" + copy[i] + "</td>";
+		else
+			handString += "<td> &nbsp;&nbsp;&nbsp; </td>"; 
+		};
+	handString += "</tr> + </table>";
+	document.write(handString);
+};
 
 bag = new Bag();
-hand = new Hand()
-console.log(hand);
-
-function Tile(x, y) {
-	this.x = x;
-	this.y = y;
-	}
+hand = new Hand();
+hand.initialHand();
+hand.drawHand();
 	
 function Board(width, height) {
   this.width = width;
   this.height = height;
-  // this.cells = new Array(width * height);
-  this.cells = function() {
+  this.cells = this.initial();
+};
+Board.prototype.initial = function() {
 	var board = [];
 	for (var i = 0; i < this.height; i++) {
 		var row = [];
 		for (var j = 0; j < this.width; j++) {
-			row.push(new Tile(i, j));
+			row.push([j, null]);
 		}
 		board.push(row);
 	}
 	return board;
+};
+Board.prototype.valueAt = function(x, y) {
+	try {
+		return this.cells[y][x][1];
 	}
-}
-Board.prototype.valueAt = function(tile) {
-  return this.cells[tile.y * this.width + tile.x];
+	catch (error) {
+		throw "Space not on game board: " + error.message;
+	}
 };
-Board.prototype.placeLetter = function(tile, letter) {
-  this.cells[tile.y * this.width + tile.x] = letter;
-  tile.set = true;
+Board.prototype.placeLetter = function(x, y, letter) {
+	if (this.valueAt(x, y) == null)
+		this.cells[y][x][1] = letter;
 };
-Board.prototype.isInside = function(tile) {
-  return tile.x >= 0 && tile.y >= 0 &&
-         tile.x < this.width && tile.y < this.height;
+Board.prototype.isInline = function(play) {
 };
 Board.prototype.each = function(func) {
 	for (var i = 0; i < this.height; i++) {
 		for (var j = 0; j < this.width; j++) {
-			var tile = new Tile(i, j);
-			func(tile, this.valueAt(tile));
+			var tile = this.cells[i][j][0];
+			func(tile, this.valueAt(j, i));
 		}
 	}
 };
-/*
-Board.prototype.each = function(func) {
-	for (var i = 0; i < this.height; i++) {
-		for (var j = 0; j < this.width; j++) {
-			var tile = this.cells[i][j];
-			func(tile, this.valueAt(tile));
-		}
-	}
-};
-*/
-Board.prototype.toString = function() {
+Board.prototype.drawBoard = function() {
 	var boardWidth = this.width;
-	var stringBoard = "";
+	var stringBoard = "<table border=\"1\">";
 	var i = 1;
-	this.each(function(tile, value) {
-		if (value == undefined)
-			stringBoard += " ";
+	this.each(function(tile, letter) {
+		if (letter == null)
+			stringBoard += "<td>&nbsp;&nbsp;&nbsp;</td>";
 		else
-			stringBoard += value;
+			stringBoard += "<td>" + letter + "</td>";
 		if (i % boardWidth == 0)
-			stringBoard += "\n";
-		i++;	
+			stringBoard += "<tr>";
+		i++;
 		});
-	return console.log(stringBoard);
-	}
-/*
-Board.prototype.toString = function() {
-	var boardWidth = this.width;
-	var stringBoard = "";
-	var i = 1;
-	this.each(function(tile, value) {
-		if (value == undefined)
-			stringBoard += " ";
-		else
-			stringBoard += value;
-		if (i % boardWidth == 0)
-			stringBoard += "\n";
-		i++;	
-		});
+	stringBoard += "</table>"
 	return document.write(stringBoard);
-	}
-*/
+};
 
-board = new Board(4, 5);
+board = new Board(5, 5);
+board.placeLetter(3, 2, "A");
+board.placeLetter(1, 3, "B");
+board.placeLetter(3, 3, "C");
+board.drawBoard();
 
 </script>
 </html>
