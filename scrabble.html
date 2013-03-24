@@ -1,10 +1,6 @@
 <html>
 <script>
-
 /*
-write test suite: isValidHand
-implement inheritence for Dictionary-like methods
-
 isValidWord (string is in word dictionary) *USE JQUERY*
 isInline (are the tiles in the possible play all in a horizontal or vertical line?)
 isValidPlay (fits on board with current arrangement)
@@ -21,9 +17,11 @@ Turn
 Player
 */
 
+window.onload = function() {
+
 var HAND_SIZE = 7;
-var BOARD_HEIGHT = 15;
-var BOARD_WIDTH = 15;
+var BOARD_HEIGHT = 10;
+var BOARD_WIDTH = 10;
 
 var LETTER_VALUES = {"A": 1, "B": 3, "C": 3, "D": 2, "E": 1, "F": 4, "G": 2, "H": 4, "I": 1, "J": 8, "K": 5, "L": 1, "M": 3, "N": 1, "O": 1, "P": 3, "Q": 10, "R": 1, "S": 1, "T": 1, "U": 1, "V": 4, "W": 4, "X": 8, "Y": 4, "Z": 10, " ": 0}
 
@@ -57,184 +55,282 @@ function wordToString(word) {
 	});
 	return stringWord;
 }
-	
-function Bag() {
-	this.values = new Object(LETTER_COUNTS);
-}
-Bag.prototype.store = function(letter, value) {
-  this.values[letter] = value;
-};
-Bag.prototype.lookup = function(letter) {
-  return this.values[letter];
-};
-Bag.prototype.contains = function(letter) {
-  return Object.prototype.hasOwnProperty.call(this.values, letter) &&
-    Object.prototype.propertyIsEnumerable.call(this.values, letter);
-};
-Bag.prototype.each = function(action) {
-  forEachIn(this.values, action);
-};
-Bag.prototype.remove = function(letter) {
-	if (this.contains(letter) == false || (this.lookup(letter) < 0))
-		throw "Bag doesn't contain letter";
-	else
-		this.store(letter, this.lookup(letter)-1);
-}
-Bag.prototype.createArray = function() {
-	var lettersArray = [];
-	this.each(function(letter, value) {
-		for (var i = 0; i < value; i++) {
-			lettersArray.push(letter);
-			}
-		});
-	return lettersArray;
-}
-Bag.prototype.selectRandomLetter = function() {
-	lettersArray = this.createArray();
-	return lettersArray[randomInteger(lettersArray.length)];
-}
-Bag.prototype.count = function() {
-	lettersArray = this.createArray();
-	return lettersArray.length;
+
+function clone(object) {
+  function OneShotConstructor(){}
+  OneShotConstructor.prototype = object;
+  return new OneShotConstructor();
 }
 
-function Hand(startValues) {
-  this.values = startValues || {}
+Object.prototype.create = function() {
+  var object = clone(this);
+  if (typeof object.construct == "function")
+    object.construct.apply(object, arguments);
+  return object;
+};
+
+Object.prototype.extend = function(properties) {
+  var result = clone(this);
+  forEachIn(properties, function(name, value) {
+    result[name] = value;
+  });
+  return result;
+};
+
+function setNodeAttribute(node, attribute, value) {
+  if (attribute == "class")
+    node.className = value;
+  else if (attribute == "checked")
+    node.defaultChecked = value;
+  else if (attribute == "for")
+    node.htmlFor = value;
+  else if (attribute == "style")
+    node.style.cssText = value;
+  else
+    node.setAttribute(attribute, value);
 }
-Hand.prototype.store = function(letter, value) {
-  this.values[letter] = value;
-};
-Hand.prototype.lookup = function(letter) {
-  return this.values[letter];
-};
-Hand.prototype.contains = function(letter) {
-  return Object.prototype.hasOwnProperty.call(this.values, letter) &&
-    Object.prototype.propertyIsEnumerable.call(this.values, letter);
-};
-Hand.prototype.each = function(action) {
-  forEachIn(this.values, action);
-};
-Hand.prototype.remove = function(letter) {
-	if (this.contains(letter) == false || (this.lookup(letter) < 0))
-		throw "Hand doesn't contain letter";
-	else
-		this.store(letter, this.lookup(letter)-1);
-};
-Hand.prototype.createArray = function() {
-	var lettersArray = [];
-	this.each(function(letter, value) {
-		for (var i = 0; i < value; i++) {
-			lettersArray.push(letter);
-			}
-		});
-	return lettersArray;
+
+function dom(name, attributes) {
+  var node = document.createElement(name);
+  if (attributes) {
+    forEachIn(attributes, function(name, value) {
+      setNodeAttribute(node, name, value);
+    });
+  }
+  for (var i = 2; i < arguments.length; i++) {
+    var child = arguments[i];
+    if (typeof child == "string")
+      child = document.createTextNode(child);
+    node.appendChild(child);
+  }
+  return node;
 }
-Hand.prototype.grabLetter = function() {
-	try {
-	newLetter = bag.selectRandomLetter();
-	if (this.contains(newLetter) == false) 
-		this.store(newLetter, 1);
-	else
-		this.store(newLetter, this.lookup(newLetter)+1);
-	bag.remove(newLetter);
-	}
-	catch (error) {
-		throw "No bag initialized: " + error.message;
-	}
+
+function registerEventHandler(node, event, handler) {
+  if (typeof node.addEventListener == "function")
+    node.addEventListener(event, handler, false);
+  else
+    node.attachEvent("on" + event, handler);
 }
-Hand.prototype.initialHand = function() {
-	for (var i = 0; i < HAND_SIZE; i++) {
-		this.grabLetter();
-	};
+
+function addHandler(node, type, handler) {
+  function wrapHandler(event) {
+    handler(window.event);
+  }
+  registerEventHandler(node, type, wrapHandler);
+  return {node: node, type: type, handler: wrapHandler};
 }
-Hand.prototype.isValidHand = function(word) {
-	copy = this.createArray();
-	for (var i = 0; i < word.length; i++) {
-		if (copy.indexOf(word[i]) == -1)
-			return false;
+
+function removeHandler(object) {
+  unregisterEventHandler(object.node, object.type, object.handler);
+}
+
+function method(object, name) {
+  return function() {
+    return object[name].apply(object, arguments);
+  };
+}
+
+var Dictionary = {
+	construct: function(object) {
+		this.values = object || {};
+	},
+	store: function(letter, value) {
+		this.values[letter] = value;
+	},
+	lookup: function(letter) {
+		return this.values[letter];
+	},
+	contains: function(letter) {
+		return Object.prototype.hasOwnProperty.call(this.values, letter) &&
+		Object.prototype.propertyIsEnumerable.call(this.values, letter);
+	},
+	each: function(action) {
+		forEachIn(this.values, action);
+	},
+	remove: function(letter) {
+		if (this.contains(letter) == false || (this.lookup(letter) < 0))
+			throw "Doesn't contain letter";
 		else
-			delete copy[copy.indexOf(word[i])];
-	};
-	return true;
-};
-Hand.prototype.drawHand = function() {
-	copy = this.createArray();
-	handString = "<table border=\"1\"> <tr>";
-	for (var i = 0; i < HAND_SIZE; i++) {
-		if (copy[i])
-			handString += "<td>" + copy[i] + "</td>";
-		else
-			handString += "<td> &nbsp;&nbsp;&nbsp; </td>"; 
+			this.store(letter, this.lookup(letter)-1);
+	},
+	createArray: function() {
+		var lettersArray = [];
+		this.each(function(letter, value) {
+			for (var i = 0; i < value; i++) {
+				lettersArray.push(letter);
+				}
+			});
+		return lettersArray;
+	}
+}
+
+var Bag = Dictionary.extend({
+	construct: function() {
+		this.values = LETTER_COUNTS;
+	},
+	selectRandomLetter: function() {
+		lettersArray = this.createArray();
+		return lettersArray[randomInteger(lettersArray.length)];
+	},
+	count: function() {
+		lettersArray = this.createArray();
+		return lettersArray.length;
+	}
+});
+
+var Hand = Dictionary.extend({
+	construct: function(startValues) {
+		this.values = startValues || {}
+	},
+	isValidHand: function(word) {
+		copy = this.createArray();
+		for (var i = 0; i < word.length; i++) {
+			if (copy.indexOf(word[i]) == -1)
+				return false;
+			else
+				delete copy[copy.indexOf(word[i])];
 		};
-	handString += "</tr> + </table>";
-	document.write(handString);
-};
+		return true;
+	},
+	drawHand: function() {
+		copy = this.createArray();
+		handString = "<table border=\"1\"> <tr>";
+		for (var i = 0; i < HAND_SIZE; i++) {
+			if (copy[i]) {
+				if (copy[i] == " ")
+					handString += "<td> &nbsp;&nbsp;&nbsp; </td>";
+				else
+					handString += "<td>" + copy[i] + "</td>";
+				}
+			else
+				handString += "<td> &nbsp;&nbsp;&nbsp; </td>"; 
+			};
+		handString += "</tr> + </table>";
+		document.write(handString);
+	}
+});
 
-bag = new Bag();
-hand = new Hand();
-hand.initialHand();
-hand.drawHand();
+function isValidHandTests() {
+	hand = new Hand({"A": 2, "B": 1, "Y": 1});
+	return hand.isValidHand("BABY") == false &&
+		hand.isValidHand("BAY") ==  true &&
+		hand.isValidHand("BY") == true &&
+		hand.isValidHand("XBY") == false &&
+		hand.isValidHand("BAAY") == true
+};
 	
-function Board(width, height) {
-  this.width = width;
-  this.height = height;
-  this.cells = this.initial();
-};
-Board.prototype.initial = function() {
-	var board = [];
-	for (var i = 0; i < this.height; i++) {
-		var row = [];
-		for (var j = 0; j < this.width; j++) {
-			row.push([j, null]);
+var Board = {
+	construct: function(width, height) {
+		this.width = width;
+		this.height = height;
+
+		this.board = [];
+		var tbody = dom("TBODY");
+		for (var y = 0; y < this.height; y++) {
+			var row = [];
+			var tableRow = dom("TR");
+			for (var x = 0; x < this.width; x++) {
+				var tableCell = dom("TD");
+				var empty =  document.createTextNode("x");
+				tableCell.appendChild(empty);
+				tableRow.appendChild(tableCell);
+				row.push([x, null]);
+			}
+			tbody.appendChild(tableRow);
+			this.board.push(row);
 		}
-		board.push(row);
-	}
-	return board;
-};
-Board.prototype.valueAt = function(x, y) {
-	try {
-		return this.cells[y][x][1];
-	}
-	catch (error) {
-		throw "Space not on game board: " + error.message;
-	}
-};
-Board.prototype.placeLetter = function(x, y, letter) {
-	if (this.valueAt(x, y) == null)
-		this.cells[y][x][1] = letter;
-};
-Board.prototype.isInline = function(play) {
-};
-Board.prototype.each = function(func) {
-	for (var i = 0; i < this.height; i++) {
-		for (var j = 0; j < this.width; j++) {
-			var tile = this.cells[i][j][0];
-			func(tile, this.valueAt(j, i));
+		
+		this.table = dom("TABLE", {"class": "scrabble", "border": "1"}, tbody);
+	},
+	valueAt: function(x, y) {
+		try {
+			return this.board[y][x][1];
 		}
+		catch (error) {
+			throw "Space not on game board: " + error.message;
+		}
+	},
+	placeLetter: function(x, y, letter) {
+		if (this.valueAt(x, y) == null)
+			this.board[y][x][1] = letter;
+	},
+	isInline: function(play) {
+	},
+	each: function(func) {
+		for (var i = 0; i < this.height; i++) {
+			for (var j = 0; j < this.width; j++) {
+				var tile = this.board[i][j][0];
+				func(tile, this.valueAt(j, i));
+			}
+		}
+	},
+	drawBoard: function() {
+		var boardWidth = this.width;
+		var stringBoard = "<table border=\"1\">";
+		var i = 1;
+		this.each(function(tile, letter) {
+			if (letter == null)
+				stringBoard += "<td>&nbsp;&nbsp;&nbsp;</td>";
+			else
+				stringBoard += "<td>" + letter + "</td>";
+			if (i % boardWidth == 0)
+				stringBoard += "<tr>";
+			i++;
+			});
+		stringBoard += "</table>"
+		return document.write(stringBoard);
+	},
+	place: function(where) {
+		where.appendChild(this.table);
+	},
+	remove: function(where) {
+		removeElement(this.table);
 	}
 };
-Board.prototype.drawBoard = function() {
-	var boardWidth = this.width;
-	var stringBoard = "<table border=\"1\">";
-	var i = 1;
-	this.each(function(tile, letter) {
-		if (letter == null)
-			stringBoard += "<td>&nbsp;&nbsp;&nbsp;</td>";
+
+var Game = {
+	construct: function(place) {
+		this.bag = null;
+		this.hand = null;
+		this.board = null;
+		
+		var newGame = dom("BUTTON", null, "New game");
+		addHandler(newGame, "click", method(this, "newGame"));
+		this.container = dom("DIV", null,
+							dom("H1", null, "Scrabble"),
+							dom("DIV", null, newGame));
+		place.appendChild(this.container);
+		
+		this.newGame();
+	},
+	newGame: function() {
+		this.board = Board.create(BOARD_WIDTH, BOARD_HEIGHT);
+		this.bag = Bag.create();
+		this.hand = Hand.create();
+		this.initialHand();
+		this.board.place(this.container);
+	},
+	grabLetter: function() {
+		newLetter = this.bag.selectRandomLetter();
+		if (this.hand.contains(newLetter) == false) 
+			this.hand.store(newLetter, 1);
 		else
-			stringBoard += "<td>" + letter + "</td>";
-		if (i % boardWidth == 0)
-			stringBoard += "<tr>";
-		i++;
-		});
-	stringBoard += "</table>"
-	return document.write(stringBoard);
+			this.hand.store(newLetter, this.hand.lookup(newLetter)+1);
+		this.bag.remove(newLetter);
+	},
+	initialHand: function() {
+		for (var i = 0; i < HAND_SIZE; i++) {
+			this.grabLetter();
+		};
+	}	
 };
 
-board = new Board(5, 5);
-board.placeLetter(3, 2, "A");
-board.placeLetter(1, 3, "B");
-board.placeLetter(3, 3, "C");
-board.drawBoard();
 
+var scrabble = Game.create(document.body);
+
+}
 </script>
+<body>
+</body>
 </html>
