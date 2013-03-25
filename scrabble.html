@@ -1,20 +1,20 @@
 <html>
 <script>
 /*
-isValidWord (string is in word dictionary) *USE JQUERY*
-isInline (are the tiles in the possible play all in a horizontal or vertical line?)
-isValidPlay (fits on board with current arrangement)
+isValidWord (string is in word dictionary)
+Board.isInline (are the tiles in the possible play all in a horizontal or vertical line?)
+Play.isValidPlay (fits on board with current arrangement)
 	use same pattern as isValidHand but add characters on board to the copy of the hand in the correct positions
+Game click handlers for placing letters
 Play.placeLetterFromHand
-Play.isValidWord
-Play.isInline
-Play.isValidPlay
-Play.isOccupied
+Play.score
+Play.updateScore
 
 Board different special bonus positions
-Game
 Turn
 Player
+
+images
 */
 
 window.onload = function() {
@@ -88,6 +88,11 @@ function setNodeAttribute(node, attribute, value) {
     node.style.cssText = value;
   else
     node.setAttribute(attribute, value);
+}
+
+function removeElement(node) {
+  if (node.parentNode)
+    node.parentNode.removeChild(node);
 }
 
 function dom(name, attributes) {
@@ -179,9 +184,29 @@ var Bag = Dictionary.extend({
 	}
 });
 
+var bag = Bag.create();
+
 var Hand = Dictionary.extend({
-	construct: function(startValues) {
-		this.values = startValues || {}
+	construct: function() {
+		this.values = {}
+		this.initialHand();
+		copy = this.createArray();
+		var tbody = dom("TBODY");
+		var tableRow = dom("TR");
+		tbody.appendChild(tableRow);
+		for (var i = 0; i < HAND_SIZE; i++) {
+			if (copy[i]) {
+				if (copy[i] == " ")
+					var tableCell = dom("TD", null, "x");
+				else
+					var tableCell = dom("TD", null, copy[i]);
+				}
+			else
+				var tableCell = dom("TD", null, "x"); 
+			tableRow.appendChild(tableCell);
+			};
+		
+		this.table = dom("TABLE", {"class": "hand", "border": "1"}, tbody);
 	},
 	isValidHand: function(word) {
 		copy = this.createArray();
@@ -193,21 +218,24 @@ var Hand = Dictionary.extend({
 		};
 		return true;
 	},
-	drawHand: function() {
-		copy = this.createArray();
-		handString = "<table border=\"1\"> <tr>";
+	grabLetter: function() {
+		newLetter = bag.selectRandomLetter();
+		if (this.contains(newLetter) == false) 
+			this.store(newLetter, 1);
+		else
+			this.store(newLetter, this.lookup(newLetter)+1);
+		bag.remove(newLetter);
+	},
+	initialHand: function() {
 		for (var i = 0; i < HAND_SIZE; i++) {
-			if (copy[i]) {
-				if (copy[i] == " ")
-					handString += "<td> &nbsp;&nbsp;&nbsp; </td>";
-				else
-					handString += "<td>" + copy[i] + "</td>";
-				}
-			else
-				handString += "<td> &nbsp;&nbsp;&nbsp; </td>"; 
-			};
-		handString += "</tr> + </table>";
-		document.write(handString);
+			this.grabLetter();
+		};
+	},
+	place: function(where) {
+		where.appendChild(this.table);
+	},
+	remove: function(where) {
+		removeElement(this.table);
 	}
 });
 
@@ -231,9 +259,7 @@ var Board = {
 			var row = [];
 			var tableRow = dom("TR");
 			for (var x = 0; x < this.width; x++) {
-				var tableCell = dom("TD");
-				var empty =  document.createTextNode("x");
-				tableCell.appendChild(empty);
+				var tableCell = dom("TD", null, "x");
 				tableRow.appendChild(tableCell);
 				row.push([x, null]);
 			}
@@ -241,7 +267,7 @@ var Board = {
 			this.board.push(row);
 		}
 		
-		this.table = dom("TABLE", {"class": "scrabble", "border": "1"}, tbody);
+		this.table = dom("TABLE", {"class": "board", "border": "1"}, tbody);
 	},
 	valueAt: function(x, y) {
 		try {
@@ -250,6 +276,9 @@ var Board = {
 		catch (error) {
 			throw "Space not on game board: " + error.message;
 		}
+	},
+	isEmpty: function(x, y) {
+		return this.valueAt(x, y) == null;
 	},
 	placeLetter: function(x, y, letter) {
 		if (this.valueAt(x, y) == null)
@@ -264,22 +293,6 @@ var Board = {
 				func(tile, this.valueAt(j, i));
 			}
 		}
-	},
-	drawBoard: function() {
-		var boardWidth = this.width;
-		var stringBoard = "<table border=\"1\">";
-		var i = 1;
-		this.each(function(tile, letter) {
-			if (letter == null)
-				stringBoard += "<td>&nbsp;&nbsp;&nbsp;</td>";
-			else
-				stringBoard += "<td>" + letter + "</td>";
-			if (i % boardWidth == 0)
-				stringBoard += "<tr>";
-			i++;
-			});
-		stringBoard += "</table>"
-		return document.write(stringBoard);
 	},
 	place: function(where) {
 		where.appendChild(this.table);
@@ -298,34 +311,24 @@ var Game = {
 		var newGame = dom("BUTTON", null, "New game");
 		addHandler(newGame, "click", method(this, "newGame"));
 		this.container = dom("DIV", null,
-							dom("H1", null, "Scrabble"),
+							dom("H1", null, ""),
 							dom("DIV", null, newGame));
 		place.appendChild(this.container);
 		
 		this.newGame();
+		
+		/* Run through childNodes DOM elements to create HAND_SIZE addHandler functions that add a click handler for each TD element in this.hand.table. Run through childNodes DOM elements of Board to create a click handler for each TD element in this.board.table. Create a function that takes the lastChild of the TD element clicked as an argument. This function will place that letter (DOM element) in the place where the user clicks next. If the click is in a TD cell of the Board, then appendChild is called on that TD to place the letter on the Board. If not, break function. */
 	},
 	newGame: function() {
+		if (this.board)
+			this.board.remove(document.body);
 		this.board = Board.create(BOARD_WIDTH, BOARD_HEIGHT);
 		this.bag = Bag.create();
 		this.hand = Hand.create();
-		this.initialHand();
 		this.board.place(this.container);
-	},
-	grabLetter: function() {
-		newLetter = this.bag.selectRandomLetter();
-		if (this.hand.contains(newLetter) == false) 
-			this.hand.store(newLetter, 1);
-		else
-			this.hand.store(newLetter, this.hand.lookup(newLetter)+1);
-		this.bag.remove(newLetter);
-	},
-	initialHand: function() {
-		for (var i = 0; i < HAND_SIZE; i++) {
-			this.grabLetter();
-		};
-	}	
+		this.hand.place(this.container);
+	}
 };
-
 
 var scrabble = Game.create(document.body);
 
