@@ -2,7 +2,6 @@
 <script>
 /*
 isValidWord (string is in word dictionary)
-Board.isInline (are the tiles in the possible play all in a horizontal or vertical line?)
 Play.isValidPlay (fits on board with current arrangement)
 	use same pattern as isValidHand but add characters on board to the copy of the hand in the correct positions
 Game click handlers for placing letters
@@ -88,12 +87,12 @@ function setNodeAttribute(node, attribute, value) {
     node.style.cssText = value;
   else
     node.setAttribute(attribute, value);
-}
+};
 
 function removeElement(node) {
   if (node.parentNode)
     node.parentNode.removeChild(node);
-}
+};
 
 function dom(name, attributes) {
   var node = document.createElement(name);
@@ -109,14 +108,14 @@ function dom(name, attributes) {
     node.appendChild(child);
   }
   return node;
-}
+};
 
 function registerEventHandler(node, event, handler) {
   if (typeof node.addEventListener == "function")
     node.addEventListener(event, handler, false);
   else
     node.attachEvent("on" + event, handler);
-}
+};
 
 function addHandler(node, type, handler) {
   function wrapHandler(event) {
@@ -168,7 +167,7 @@ var Dictionary = {
 			});
 		return lettersArray;
 	}
-}
+};
 
 var Bag = Dictionary.extend({
 	construct: function() {
@@ -184,12 +183,12 @@ var Bag = Dictionary.extend({
 	}
 });
 
-var bag = Bag.create();
-
 var Hand = Dictionary.extend({
-	construct: function() {
-		this.values = {}
-		this.initialHand();
+	construct: function(bag, startValues) {
+		this.bag = bag;
+		this.values = startValues || {};
+		if (startValues == null)
+			this.initialHand();
 		copy = this.createArray();
 		var tbody = dom("TBODY");
 		var tableRow = dom("TR");
@@ -204,7 +203,7 @@ var Hand = Dictionary.extend({
 			else
 				var tableCell = dom("TD", null, "x"); 
 			tableRow.appendChild(tableCell);
-			};
+		};
 		
 		this.table = dom("TABLE", {"class": "hand", "border": "1"}, tbody);
 	},
@@ -219,34 +218,28 @@ var Hand = Dictionary.extend({
 		return true;
 	},
 	grabLetter: function() {
-		newLetter = bag.selectRandomLetter();
+		newLetter = this.bag.selectRandomLetter();
 		if (this.contains(newLetter) == false) 
 			this.store(newLetter, 1);
 		else
 			this.store(newLetter, this.lookup(newLetter)+1);
-		bag.remove(newLetter);
+		this.bag.remove(newLetter);
 	},
 	initialHand: function() {
 		for (var i = 0; i < HAND_SIZE; i++) {
-			this.grabLetter();
+			this.grabLetter(this.bag);
 		};
 	},
-	place: function(where) {
+	clear: function() {
+		this.values = {};
+	},
+	placeToPage: function(where) {
 		where.appendChild(this.table);
 	},
-	remove: function(where) {
+	removeFromPage: function(where) {
 		removeElement(this.table);
 	}
 });
-
-function isValidHandTests() {
-	hand = new Hand({"A": 2, "B": 1, "Y": 1});
-	return hand.isValidHand("BABY") == false &&
-		hand.isValidHand("BAY") ==  true &&
-		hand.isValidHand("BY") == true &&
-		hand.isValidHand("XBY") == false &&
-		hand.isValidHand("BAAY") == true
-};
 	
 var Board = {
 	construct: function(width, height) {
@@ -259,8 +252,8 @@ var Board = {
 			var row = [];
 			var tableRow = dom("TR");
 			for (var x = 0; x < this.width; x++) {
-				var tableCell = dom("TD", null, "x");
-				tableRow.appendChild(tableCell);
+				var tableSquare = dom("TD", null, "x");
+				tableRow.appendChild(tableSquare);
 				row.push([x, null]);
 			}
 			tbody.appendChild(tableRow);
@@ -284,7 +277,28 @@ var Board = {
 		if (this.valueAt(x, y) == null)
 			this.board[y][x][1] = letter;
 	},
+	// Takes array of arrays in the form [x, y]. Are they all in a single row or column? Are all the values adjacent to each other? If so, returns true.
 	isInline: function(play) {
+		var xValue = play[0][0];
+		var yValue = play[0][1];
+		if (play[0][0] == play[1][0])
+			var row = true;
+		else if (play[0][1] = play[1][1])
+			var column = true;
+		else
+			return false;
+		for (var i = 1; i < play.length; i++) {
+			if (row) {
+				// Checks if value is in the same row and if the y value is adjacent to the previous y value
+				if ((play[i][0] != xValue) || (play[i][1] != (play[i-1][1] + 1)))
+					return false;
+			}
+			if (column) {
+				if ((play[i][1] != yValue) || (play[i][0] != (play[i-1][0] + 1)))
+					return false;
+			}
+		};
+		return true;
 	},
 	each: function(func) {
 		for (var i = 0; i < this.height; i++) {
@@ -294,45 +308,87 @@ var Board = {
 			}
 		}
 	},
-	place: function(where) {
+	placeToPage: function(where) {
 		where.appendChild(this.table);
 	},
-	remove: function(where) {
+	removeFromPage: function(where) {
 		removeElement(this.table);
 	}
 };
+
+function isInlineTests() {
+	var testBoard = Board.create(5, 5);
+	return (testBoard.isInline([[1,2], [1,3], [1, 4]]) == true) &&
+			(testBoard.isInline([[0, 2], [1, 2], [2, 2]]) == true) &&
+			(testBoard.isInline([[0, 3], [0, 4], [0, 1]]) == false) &&
+			(testBoard.isInline([[0, 1], [1, 2]]) == false) &&
+			(testBoard.isInline([[0, 1], [0, 2], [0, 3], [0, 0]]) == false)
+};
+
+function isValidHandTests(testBag) {
+	var testHand = Hand.create(testBag, {"B": 1, "A": 2, "Y": 1});
+	return testHand.isValidHand("BABY") == false &&
+		testHand.isValidHand("BAY") ==  true &&
+		testHand.isValidHand("BY") == true &&
+		testHand.isValidHand("XBY") == false &&
+		testHand.isValidHand("BAAY") == true
+};
+
+var testBag = Bag.create();
+console.log("isInline tests: " + isInlineTests());
+console.log("isValidHand tests: " + isValidHandTests(testBag));
 
 var Game = {
 	construct: function(place) {
 		this.bag = null;
 		this.hand = null;
 		this.board = null;
+		this.place = place;
 		
 		var newGame = dom("BUTTON", null, "New game");
-		addHandler(newGame, "click", method(this, "newGame"));
+		addHandler(newGame, "click", function() {location.reload();});
+		var newHand = dom("BUTTON", null, "New hand");
+		addHandler(newHand, "click", method(this, "newHand"));
 		this.container = dom("DIV", null,
 							dom("H1", null, ""),
-							dom("DIV", null, newGame));
-		place.appendChild(this.container);
+							dom("DIV", null, newGame),
+							dom("DIV", null, newHand));
+		this.place.appendChild(this.container);
 		
-		this.newGame();
+		this.initial();
 		
-		/* Run through childNodes DOM elements to create HAND_SIZE addHandler functions that add a click handler for each TD element in this.hand.table. Run through childNodes DOM elements of Board to create a click handler for each TD element in this.board.table. Create a function that takes the lastChild of the TD element clicked as an argument. This function will place that letter (DOM element) in the place where the user clicks next. If the click is in a TD cell of the Board, then appendChild is called on that TD to place the letter on the Board. If not, break function. */
+		/* Run through childNodes DOM elements to create HAND_SIZE addHandler functions that adds a click handler for each TD element in this.hand.table. Run through childNodes DOM elements of Board to create a click handler for each TD element in this.board.table. Create a function that takes the lastChild of the TD element clicked as an argument. This function will place that letter (DOM element) in the place where the user clicks next. If the click is in a TD cell of the Board, then appendChild is called on that TD to place the letter on the Board. If not, break function. */
 	},
-	newGame: function() {
-		if (this.board)
-			this.board.remove(document.body);
+	initial: function() {
+		if (this.board && this.hand) {
+			this.board.removeFromPage(document.body);
+			this.hand.removeFromPage(document.body);
+		}
 		this.board = Board.create(BOARD_WIDTH, BOARD_HEIGHT);
+		this.board.placeToPage(this.container);
 		this.bag = Bag.create();
-		this.hand = Hand.create();
-		this.board.place(this.container);
-		this.hand.place(this.container);
+		this.hand = Hand.create(this.bag, null);
+		this.hand.placeToPage(this.container);
+	},
+	newHand: function() {
+		if (this.board && this.hand && (this.bag.count() >= 7)) {
+			this.hand.clear();
+			this.hand.removeFromPage(document.body);
+			this.hand = Hand.create(this.bag, null);
+			this.hand.placeToPage(document.body);
+		}
+		else
+			throw "Not enough letters in bag";
+	},
+	isValidPlay: function() {
+		copy = this.hand.createArray();
+		
 	}
 };
 
 var scrabble = Game.create(document.body);
 
-}
+};
 </script>
 <body>
 </body>
