@@ -1,28 +1,27 @@
 <html>
+<body>
+<script src="jquery-1.9.1.js"></script>
 <script type="text/javascript">
 /*
-isValidWord (string is in word dictionary)
-Game click handlers for placing letters
+
+Update score information
+Place Board using JQUERY?
+Place Hand using JQUERY?
 
 Play- part of a Turn. click and place tiles on to board as part of the Play. when user clicks "play word" button, check isValidWord and isInline. if not valid word or not in a line and adjacent, then return the letters submitted to the hand, keeping the letters that were already on the board. if valid word, mark the letters in Play as a permanent part of the board.
 
-How do we access the empty squares we create when we create a Board? How do we define many variables within a loop?
+How do we access the empty Square objects we create when we create a Board? How do we define multiple variables within a loop? eval?
 
-re-write dom elements using JQUERY
-Place buttons
-Place score information
-Place messages/warnings
-Place Board
-Place Hand
+isValidWord (string is in word dictionary)
 
 Board different special bonus positions
 Turn
 Player
 
+effects
 images
 */
-
-window.onload = function() {
+$(document).ready(function() {
 
 var HAND_SIZE = 7;
 var BOARD_HEIGHT = 10;
@@ -190,30 +189,6 @@ var Bag = Dictionary.extend({
 	}
 });
 
-var Square = {
-	construct: function(x, y) {
-		this.x = x;
-		this.y = y;
-		this.letter = "x";
-		this.lock = false;
-	},
-	isEmpty: function() {
-		return this.letter == "x";
-	},
-	setLock: function() {
-		this.lock = true;
-	},
-	getLock: function() {
-		return this.lock;
-	},
-	setLetter: function(letter) {
-		this.letter = letter;
-	},
-	getLetter: function() {
-		return this.letter;
-	}
-};
-
 var Hand = Dictionary.extend({
 	construct: function(bag, startValues) {
 		this.bag = bag;
@@ -227,16 +202,14 @@ var Hand = Dictionary.extend({
 		for (var i = 0; i < HAND_SIZE; i++) {
 			if (copy[i]) {
 				if (copy[i] == " ")
-					var tableCell = dom("TD", null, "x");
+					var tableCell = dom("TD", {"id": String(i)}, "x");
 				else
-					var tableCell = dom("TD", null, copy[i]);
+					var tableCell = dom("TD", {"id": String(i)}, copy[i]);
 				}
-			else
-				var tableCell = dom("TD", null, "x"); 
 			tableRow.appendChild(tableCell);
 		};
 		
-		this.table = dom("TABLE", {"class": "hand", "border": "1"}, tbody);
+		this.table = dom("TABLE", {"id": "hand", "border": "1"}, tbody);
 	},
 	isValidHand: function(word) {
 		copy = this.createArray();
@@ -261,6 +234,12 @@ var Hand = Dictionary.extend({
 			this.grabLetter(this.bag);
 		};
 	},
+	remove: function(letter) {
+		if (this.contains(letter) == false || (this.lookup(letter) < 0))
+			throw "Doesn't contain letter";
+		else
+			this.store(letter, this.lookup(letter)-1);
+	},
 	clear: function() {
 		this.values = {};
 	},
@@ -272,10 +251,35 @@ var Hand = Dictionary.extend({
 	}
 });
 	
+var Square = {
+	construct: function(x, y) {
+		this.x = x;
+		this.y = y;
+		this.letter = "x";
+		this.lock = false;
+	},
+	isEmpty: function() {
+		return this.letter == "x";
+	},
+	setLock: function() {
+		this.lock = true;
+	},
+	getLock: function() {
+		return this.lock;
+	},
+	setLetter: function(letter) {
+		this.letter = letter;
+	},
+	getLetter: function() {
+		return this.letter;
+	}
+};	
+	
 var Board = {
 	construct: function(width, height) {
 		this.width = width;
 		this.height = height;
+		var lock = false;
 
 		this.board = [];
 		var tbody = dom("TBODY");
@@ -283,16 +287,16 @@ var Board = {
 			var row = [];
 			var tableRow = dom("TR");
 			for (var x = 0; x < this.width; x++) {
-				var tableSquare = dom("TD", null, "x");
+				var tableSquare = dom("TD", {"id": String(x) + String(y)}, "x");
 				tableRow.appendChild(tableSquare);
 				// row.push(Square.create(x, y));
-				row.push([x, null]);
+				row.push([lock, null]);
 			}
 			tbody.appendChild(tableRow);
 			this.board.push(row);
 		}
 		
-		this.table = dom("TABLE", {"class": "board", "border": "1"}, tbody);
+		this.table = dom("TABLE", {"id": "board", "border": "1"}, tbody);
 	},
 	valueAt: function(x, y) {
 		try {
@@ -308,6 +312,7 @@ var Board = {
 	placeLetter: function(x, y, letter) {
 		if (this.isEmpty(x, y))
 			this.board[y][x][1] = letter;
+			$('#' + String(x) + String(y)).text(letter);
 	},
 	// Takes array of arrays in the form [x, y]. Are they all in a single row or column? Are all the values adjacent to each other? If so, returns true.
 	isInline: function(play) {
@@ -364,45 +369,78 @@ var Game = {
 		this.place = place;
 		this.score = 0;
 		
-		var newGame = dom("BUTTON", null, "New game");
-		addHandler(newGame, "click", function() {location.reload();});
-		var newHand = dom("BUTTON", null, "New hand");
-		addHandler(newHand, "click", method(this, "newHand"));
-		this.container = dom("DIV", null,
-							dom("H1", null, ""),
-							dom("DIV", null, newGame),
-							dom("DIV", null, newHand));
-		this.place.appendChild(this.container);
+		$('<button id="newGame">New game</button>').appendTo(this.place);
+		$('#newGame').on('click', function() {
+			location.reload();
+			});
+		$('<button id="newHand">New hand</button>').appendTo(this.place);
+		$('#newHand').on('click', method(this, 'newHand'));
+		$('<button id="deselect">Deselect letter</button>').appendTo(this.place);
+
+		$('<div id="score">Score: ' + this.score + '</div>').appendTo(this.place);
+		$('<div id="messages">&nbsp;</div>').appendTo(this.place);
 		
 		this.initial();
 		
-		/* Need to write handler for placing tiles: run through childNodes DOM elements to create HAND_SIZE addHandler functions that adds a click handler for each TD element in this.hand.table. Run through childNodes DOM elements of Board to create a click handler for each TD element in this.board.table. Create a function that takes the lastChild of the TD element clicked as an argument. This function will place that letter (DOM element) in the place where the user clicks next. If the click is in a TD cell of the Board, then appendChild is called on that TD to place the letter on the Board. If not, break function. */
+		var letterEvent = null;
+		
+		$('#hand').children().children().children().each(function() {
+			var $this = $(this);
+			$this.on('click', function() {
+				console.log("clicked on hand: " + $this.text());
+				letterEvent = [$this.text(), $this.attr("id")];
+				$this.text("x");
+			});
+		});
+		
+		self = this;
+		$('#board').children().children().children().each(function() {
+			var $this = $(this);
+			$this.on('click', function() {
+				var square = $this.attr("id");
+				console.log("clicked board at: " + square);
+				if (letterEvent) {
+					self.placeLetterFromHand(square[0], square[1], letterEvent[0]);
+					letterEvent = null;
+				}
+			});
+		});
+
+		$('#deselect').on('click', function() {
+			if (letterEvent) {
+				console.log("deselect");
+				$('#' + letterEvent[1]).text(letterEvent[0]);
+				letterEvent = null;
+			}
+		});
 	},
 	initial: function() {
 		if (this.board && this.hand) {
-			this.board.removeFromPage(document.body);
-			this.hand.removeFromPage(document.body);
+			this.board.removeFromPage(this.place);
+			this.hand.removeFromPage(this.place);
 		}
 		this.score = 0;
 		this.board = Board.create(BOARD_WIDTH, BOARD_HEIGHT);
-		this.board.placeToPage(this.container);
+		this.board.placeToPage(this.place);
 		this.bag = Bag.create();
 		this.hand = Hand.create(this.bag, null);
-		this.hand.placeToPage(this.container);
+		this.hand.placeToPage(this.place);
 	},
 	newHand: function() {
-		if (this.board && this.hand && (this.bag.count() >= 7)) {
+		if (this.board && this.hand && (this.bag.count() >= HAND_SIZE)) {
 			this.hand.clear();
-			this.hand.removeFromPage(document.body);
+			this.hand.removeFromPage(this.place);
 			this.hand = Hand.create(this.bag, null);
-			this.hand.placeToPage(document.body);
+			this.hand.placeToPage(this.place);
 		}
 		else
-			throw "Not enough letters in bag";
+			$('#messages').text("Bag out of letters");
 	},
 	placeLetterFromHand: function(x, y, letter) {
-		this.hand.remove(letter);
+		//Wait until Play is finished to remove from hand
+		//this.hand.remove(letter);
 		this.board.placeLetter(x, y, letter);
+		console.log("Placed on board: " + letter);
 	},
 	updateScore: function(newPoints) {
 		this.score += newPoints;
@@ -441,8 +479,7 @@ console.log("boardToWord tests: " + boardToWordTests());
 
 var scrabble = Game.create(document.body);
 
-};
+});
 </script>
-<body>
 </body>
 </html>
