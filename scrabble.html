@@ -4,19 +4,22 @@
 <script type="text/javascript">
 /*
 
-Update score information
+Clean up unneeded functions
+
 Place Board using JQUERY?
 Place Hand using JQUERY?
 
 Play- part of a Turn. click and place tiles on to board as part of the Play. when user clicks "play word" button, check isValidWord and isInline. if not valid word or not in a line and adjacent, then return the letters submitted to the hand, keeping the letters that were already on the board. if valid word, mark the letters in Play as a permanent part of the board.
 
-How do we access the empty Square objects we create when we create a Board? How do we define multiple variables within a loop? eval?
+How do we access the empty Square objects we create when we create a Board? How do we define multiple variables within a loop? eval? Should we even use a Square object or just add the traits we need to the array?
 
 isValidWord (string is in word dictionary)
 
+Turn/Submit Word
+
+Update score information
+
 Board different special bonus positions
-Turn
-Player
 
 effects
 images
@@ -223,10 +226,7 @@ var Hand = Dictionary.extend({
 	},
 	grabLetter: function() {
 		newLetter = this.bag.selectRandomLetter();
-		if (this.contains(newLetter) == false) 
-			this.store(newLetter, 1);
-		else
-			this.store(newLetter, this.lookup(newLetter)+1);
+		this.add(newLetter);
 		this.bag.remove(newLetter);
 	},
 	initialHand: function() {
@@ -239,6 +239,12 @@ var Hand = Dictionary.extend({
 			throw "Doesn't contain letter";
 		else
 			this.store(letter, this.lookup(letter)-1);
+	},
+	add: function(letter) {
+		if (this.contains(letter) == false) 
+			this.store(letter, 1);
+		else
+			this.store(letter, this.lookup(letter)+1);
 	},
 	clear: function() {
 		this.values = {};
@@ -279,7 +285,7 @@ var Board = {
 	construct: function(width, height) {
 		this.width = width;
 		this.height = height;
-		var lock = false;
+		var lock = true;
 
 		this.board = [];
 		var tbody = dom("TBODY");
@@ -310,9 +316,21 @@ var Board = {
 		return this.valueAt(x, y) == null;
 	},
 	placeLetter: function(x, y, letter) {
-		if (this.isEmpty(x, y))
+		if (this.isEmpty(x, y)) {
 			this.board[y][x][1] = letter;
 			$('#' + String(x) + String(y)).text(letter);
+			this.setLock(x, y, false);
+		}
+	},
+	removeLetter: function(x, y) {
+		this.board[y][x][1] = null;
+	},
+	// Sets lock to boolean 'value'. 'true' if one can't move the space, such as in an empty space or a letter that has already been played. 'false' if one can move the letter such as in rearranging letters for a play
+	setLock: function(x, y, value) {
+		this.board[y][x][0] = value;
+	},
+	getLock: function(x, y) {
+		return this.board[y][x][0];
 	},
 	// Takes array of arrays in the form [x, y]. Are they all in a single row or column? Are all the values adjacent to each other? If so, returns true.
 	isInline: function(play) {
@@ -337,6 +355,15 @@ var Board = {
 		};
 		return true;
 	},
+	// Scans board for letters with a lock of false to determine the play
+	findPlay: function() {
+		for (var y = 0; y < this.height; y++) {
+			for (var x = 0; x < this.width; x++) {	
+				if (this.board[y][x][0] == false)
+					play.append([x, y]);
+			}
+		}
+	},
 	// Takes array of arrays in the form [x, y, letter]. Return string from letters placed on board.
 	boardToWord: function(play) {
 		word = "";
@@ -348,8 +375,8 @@ var Board = {
 	each: function(func) {
 		for (var i = 0; i < this.height; i++) {
 			for (var j = 0; j < this.width; j++) {
-				var tile = this.board[i][j][0];
-				func(tile, this.valueAt(j, i));
+				var lock = this.board[i][j][0];
+				func(lock, this.valueAt(j, i));
 			}
 		}
 	},
@@ -383,33 +410,60 @@ var Game = {
 		this.initial();
 		
 		var letterEvent = null;
+		var self = this;
 		
+		//Hand click handlers
 		$('#hand').children().children().children().each(function() {
 			var $this = $(this);
 			$this.on('click', function() {
-				console.log("clicked on hand: " + $this.text());
-				letterEvent = [$this.text(), $this.attr("id")];
-				$this.text("x");
+				// Placing a letter back in hand
+				if (letterEvent) {
+					$('#' + $this.attr('id')).text(letterEvent[0]);
+					self.hand.add(letterEvent[0]);
+					letterEvent = null;
+				}
+				// Grabbing letter from hand
+				else {
+					console.log("clicked on hand: " + $this.text());
+					letterEvent = [$this.text(), $this.attr("id")];
+					self.hand.remove($this.text());
+					$this.text("x");
+				}
 			});
 		});
 		
-		self = this;
+		//Board click handlers
 		$('#board').children().children().children().each(function() {
 			var $this = $(this);
 			$this.on('click', function() {
 				var square = $this.attr("id");
 				console.log("clicked board at: " + square);
-				if (letterEvent) {
+				// Place letter on board
+				if ((letterEvent) && (self.board.isEmpty(square[0], square[1]))) {
 					self.placeLetterFromHand(square[0], square[1], letterEvent[0]);
 					letterEvent = null;
 				}
+				// Grab letter from board
+				else if ((!letterEvent) && (self.board.getLock(square[0], square[1]) == false)) {
+					console.log("grabbed square with value: " + $this.text());
+					letterEvent = [$this.text(), $this.attr("id")];
+					$this.text("x");
+					self.board.removeLetter(square[0], square[1]);
+					self.board.setLock(square[0], square[1], true);
+				}
+				// Recall letter to previous position if player tries to place letter in bad position
+				else if ((letterEvent) && !self.board.isEmpty(square[0], square[1])) {
+					self.recallLetter(letterEvent);
+					letterEvent = null;
+				}				
 			});
 		});
-
+		
+		// Returns letter from whence it came
 		$('#deselect').on('click', function() {
 			if (letterEvent) {
 				console.log("deselect");
-				$('#' + letterEvent[1]).text(letterEvent[0]);
+				self.recallLetter(letterEvent);
 				letterEvent = null;
 			}
 		});
@@ -435,6 +489,10 @@ var Game = {
 		}
 		else
 			$('#messages').text("Bag out of letters");
+	},
+	recallLetter: function(letterEvent) {
+			$('#' + letterEvent[1]).text(letterEvent[0]);
+			letterEvent = null;
 	},
 	placeLetterFromHand: function(x, y, letter) {
 		//Wait until Play is finished to remove from hand
