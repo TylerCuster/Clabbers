@@ -1,28 +1,40 @@
 <html>
+<style>
+.empty {
+	background-color: grey;
+}
+.empty-hand {
+	background-color: black;
+}
+.selected-letter {
+	background-color: red;
+}
+</style>
 <body>
 <script src="jquery-1.9.1.js"></script>
 <script type="text/javascript">
 /*
-
 Clean up unneeded functions
 
 Place Board using JQUERY?
 Place Hand using JQUERY?
 
-Play- part of a Turn. click and place tiles on to board as part of the Play. when user clicks "play word" button, check isValidWord and isInline. if not valid word or not in a line and adjacent, then return the letters submitted to the hand, keeping the letters that were already on the board. if valid word, mark the letters in Play as a permanent part of the board.
-
 How do we access the empty Square objects we create when we create a Board? How do we define multiple variables within a loop? eval? Should we even use a Square object or just add the traits we need to the array?
 
+Playing hand using letters already on board: 
+check if play includes at least one letter used on board: findPlay to scan for squares where lock is false. Then check for letters on the board that are before and after and in between that array. If there are letters before and/or after and/or in-between, include them in play. Create conditional to check if it's the first play of the game where these conditions don't need to be met.
+
+Replenish hand after word is submitted and verified
+
 isValidWord (string is in word dictionary)
-
-Turn/Submit Word
-
-Update score information
 
 Board different special bonus positions
 
 effects
 images
+
+BUGS:
+submit word returns null + letter when 2 letters are submitted adjacent and diagonal. isInline fails but if statements still run???
 */
 $(document).ready(function() {
 
@@ -30,9 +42,9 @@ var HAND_SIZE = 7;
 var BOARD_HEIGHT = 10;
 var BOARD_WIDTH = 10;
 
-var LETTER_VALUES = {"A": 1, "B": 3, "C": 3, "D": 2, "E": 1, "F": 4, "G": 2, "H": 4, "I": 1, "J": 8, "K": 5, "L": 1, "M": 3, "N": 1, "O": 1, "P": 3, "Q": 10, "R": 1, "S": 1, "T": 1, "U": 1, "V": 4, "W": 4, "X": 8, "Y": 4, "Z": 10, " ": 0}
+var LETTER_VALUES = {"A": 1, "B": 3, "C": 3, "D": 2, "E": 1, "F": 4, "G": 2, "H": 4, "I": 1, "J": 8, "K": 5, "L": 1, "M": 3, "N": 1, "O": 1, "P": 3, "Q": 10, "R": 1, "S": 1, "T": 1, "U": 1, "V": 4, "W": 4, "X": 8, "Y": 4, "Z": 10, "*": 0}
 
-var LETTER_COUNTS = {"A": 9, "B": 2, "C": 2, "D": 4, "E": 12, "F": 2, "G": 3, "H": 2, "I": 9, "J": 1, "K": 1, "L": 4, "M": 2, "N": 6, "O": 8, "P": 2, "Q": 1, "R": 6, "S": 4, "T": 6, "U": 4, "V": 2, "W": 2, "X": 1, "Y": 2, "Z": 1, " ": 2}
+var LETTER_COUNTS = {"A": 9, "B": 2, "C": 2, "D": 4, "E": 12, "F": 2, "G": 3, "H": 2, "I": 9, "J": 1, "K": 1, "L": 4, "M": 2, "N": 6, "O": 8, "P": 2, "Q": 1, "R": 6, "S": 4, "T": 6, "U": 4, "V": 2, "W": 2, "X": 1, "Y": 2, "Z": 1, "*": 2}
 
 function randomInteger(below) {
 	return Math.floor(Math.random() * below);
@@ -49,9 +61,9 @@ function forEachIn(object, action) {
 function calculateWordScore(word) {
 	score = 0;
 	forEachIn(word, function(letter, count) {
-		score += LETTER_VALUES[letter] * count;
+		score += LETTER_VALUES[letter] * Number(count);
 	});
-	return score;
+	return Number(score);
 }
 
 function wordToString(word) {
@@ -62,6 +74,17 @@ function wordToString(word) {
 		};
 	});
 	return stringWord;
+}
+
+function stringToWord(word) {
+	var wordDict = Dictionary.create();
+	for (var i = 0; i < word.length; i++) {
+		if (wordDict.contains(word[i]) == false) 
+			wordDict.store(word[i], 1);
+		else
+			wordDict.store(word[i], wordDict.lookup(word[i])+1);
+	}
+	return wordDict.values;
 }
 
 function clone(object) {
@@ -205,7 +228,7 @@ var Hand = Dictionary.extend({
 		for (var i = 0; i < HAND_SIZE; i++) {
 			if (copy[i]) {
 				if (copy[i] == " ")
-					var tableCell = dom("TD", {"id": String(i)}, "x");
+					var tableCell = dom("TD", {"id": String(i)}, "*");
 				else
 					var tableCell = dom("TD", {"id": String(i)}, copy[i]);
 				}
@@ -226,21 +249,22 @@ var Hand = Dictionary.extend({
 	},
 	grabLetter: function() {
 		newLetter = this.bag.selectRandomLetter();
-		this.add(newLetter);
+		this.addLetter(newLetter);
 		this.bag.remove(newLetter);
+		return newLetter;
 	},
 	initialHand: function() {
 		for (var i = 0; i < HAND_SIZE; i++) {
 			this.grabLetter(this.bag);
 		};
 	},
-	remove: function(letter) {
+	removeLetter: function(letter) {
 		if (this.contains(letter) == false || (this.lookup(letter) < 0))
-			throw "Doesn't contain letter";
+			throw "Hand doesn't contain letter";
 		else
 			this.store(letter, this.lookup(letter)-1);
 	},
-	add: function(letter) {
+	addLetter: function(letter) {
 		if (this.contains(letter) == false) 
 			this.store(letter, 1);
 		else
@@ -256,7 +280,8 @@ var Hand = Dictionary.extend({
 		removeElement(this.table);
 	}
 });
-	
+
+/*
 var Square = {
 	construct: function(x, y) {
 		this.x = x;
@@ -280,6 +305,7 @@ var Square = {
 		return this.letter;
 	}
 };	
+*/
 	
 var Board = {
 	construct: function(width, height) {
@@ -293,7 +319,7 @@ var Board = {
 			var row = [];
 			var tableRow = dom("TR");
 			for (var x = 0; x < this.width; x++) {
-				var tableSquare = dom("TD", {"id": String(x) + String(y)}, "x");
+				var tableSquare = dom("TD", {"id": String(x) + String(y), "class": "empty"}, "x");
 				tableRow.appendChild(tableSquare);
 				// row.push(Square.create(x, y));
 				row.push([lock, null]);
@@ -318,7 +344,6 @@ var Board = {
 	placeLetter: function(x, y, letter) {
 		if (this.isEmpty(x, y)) {
 			this.board[y][x][1] = letter;
-			$('#' + String(x) + String(y)).text(letter);
 			this.setLock(x, y, false);
 		}
 	},
@@ -332,8 +357,10 @@ var Board = {
 	getLock: function(x, y) {
 		return this.board[y][x][0];
 	},
-	// Takes array of arrays in the form [x, y]. Are they all in a single row or column? Are all the values adjacent to each other? If so, returns true.
+	// Takes array of arrays in the form [x, y]. Are they all in a single row or column? Are all the values adjacent to each other? If so, returns true. Requires there are at least two tiles played.
 	isInline: function(play) {
+		if (play.length < 2) 
+			return true;
 		var xValue = play[0][0];
 		var yValue = play[0][1];
 		if (play[0][0] == play[1][0])
@@ -357,18 +384,39 @@ var Board = {
 	},
 	// Scans board for letters with a lock of false to determine the play
 	findPlay: function() {
+		play = [];
 		for (var y = 0; y < this.height; y++) {
 			for (var x = 0; x < this.width; x++) {	
 				if (this.board[y][x][0] == false)
-					play.append([x, y]);
+					play.push([x, y]);
 			}
 		}
+		return play;
 	},
-	// Takes array of arrays in the form [x, y, letter]. Return string from letters placed on board.
+	setPlay: function(play) {
+		for (var i = 0; i < play.length; i++) {
+			var x = play[i][0];
+			var y = play[i][1];
+			this.board[y][x][0] = true;
+		}
+	},
+	countPlay: function() {
+		play = [];
+		for (var y = 0; y < this.height; y++) {
+			for (var x = 0; x < this.width; x++) {	
+				if (this.board[y][x][0] == false)
+					play.push([x, y]);
+			}
+		}
+		return play.length;
+	},	
+	// Takes array of arrays in the form [x, y]. Return string from letters placed on board.
 	boardToWord: function(play) {
 		word = "";
 		for (var i = 0; i < play.length; i++) {
-			word += play[i][2];
+			var x = play[i][0];
+			var y = play[i][1];
+			word += this.board[y][x][1];
 		}
 		return word;
 	},
@@ -402,7 +450,9 @@ var Game = {
 			});
 		$('<button id="newHand">New hand</button>').appendTo(this.place);
 		$('#newHand').on('click', method(this, 'newHand'));
-		$('<button id="deselect">Deselect letter</button>').appendTo(this.place);
+		
+		$('<button id="submitWord">Submit word</button>').appendTo(this.place);
+		$('#submitWord').on('click', method(this, 'submitWord'));
 
 		$('<div id="score">Score: ' + this.score + '</div>').appendTo(this.place);
 		$('<div id="messages">&nbsp;</div>').appendTo(this.place);
@@ -417,56 +467,80 @@ var Game = {
 			var $this = $(this);
 			$this.on('click', function() {
 				// Placing a letter back in hand
-				if (letterEvent) {
-					$('#' + $this.attr('id')).text(letterEvent[0]);
-					self.hand.add(letterEvent[0]);
+				if (letterEvent && $this.text() == "x") {
+					$this.text(letterEvent[0]);
+					$this.removeClass("empty").removeClass("empty-hand");
+					
+					$id = $('#' + letterEvent[1])
+					square = $id.attr('id');
+					$id.removeClass("selected-letter")
+						.text("x");
+					// Determining whether letter was grabbed from board
+					if (letterEvent[1].length == 2) {
+						self.hand.addLetter(letterEvent[0]);
+						self.board.removeLetter(square[0], square[1]);
+						self.board.setLock(square[0], square[1], true);
+						$id.addClass('empty');
+					}
+					else
+						$id.addClass('empty-hand');
 					letterEvent = null;
 				}
 				// Grabbing letter from hand
-				else {
-					console.log("clicked on hand: " + $this.text());
+				else if (!letterEvent && $this.text() != "x") {
+					$this.addClass("selected-letter");
 					letterEvent = [$this.text(), $this.attr("id")];
-					self.hand.remove($this.text());
-					$this.text("x");
+				}
+				else if (letterEvent && $this.text() == letterEvent[0]) {
+					self.deselectHandler(letterEvent);
+					letterEvent = null;
 				}
 			});
 		});
 		
+		//children().children().children() means #board table -> tbody -> tr -> td
 		//Board click handlers
 		$('#board').children().children().children().each(function() {
 			var $this = $(this);
 			$this.on('click', function() {
 				var square = $this.attr("id");
-				console.log("clicked board at: " + square);
 				// Place letter on board
 				if ((letterEvent) && (self.board.isEmpty(square[0], square[1]))) {
 					self.placeLetterFromHand(square[0], square[1], letterEvent[0]);
+					$('#' + String(square[0]) + String(square[1])).text(letterEvent[0])
+																	.removeClass("empty");
+					
+					$id = $('#' + letterEvent[1])
+					square = $id.attr('id');
+					$id.removeClass("selected-letter");
+					if (letterEvent[1].length < 2) {
+						self.hand.removeLetter($id.text());
+						$id.addClass('empty-hand');
+					}
+					else {
+						self.board.removeLetter(square[0], square[1]);
+						self.board.setLock(square[0], square[1], true);
+						$id.addClass('empty');
+					}
+					$id.text("x");
 					letterEvent = null;
 				}
 				// Grab letter from board
 				else if ((!letterEvent) && (self.board.getLock(square[0], square[1]) == false)) {
-					console.log("grabbed square with value: " + $this.text());
 					letterEvent = [$this.text(), $this.attr("id")];
-					$this.text("x");
-					self.board.removeLetter(square[0], square[1]);
-					self.board.setLock(square[0], square[1], true);
+					$this.addClass("selected-letter");
 				}
-				// Recall letter to previous position if player tries to place letter in bad position
-				else if ((letterEvent) && !self.board.isEmpty(square[0], square[1])) {
-					self.recallLetter(letterEvent);
+				else if (letterEvent && $this.text() == letterEvent[0]) {
+					self.deselectHandler(letterEvent);
 					letterEvent = null;
 				}				
 			});
 		});
-		
-		// Returns letter from whence it came
-		$('#deselect').on('click', function() {
-			if (letterEvent) {
-				console.log("deselect");
-				self.recallLetter(letterEvent);
-				letterEvent = null;
-			}
-		});
+	},
+	deselectHandler: function(letterEvent) {
+		var $id = $('#' + letterEvent[1]);
+		$id.text(letterEvent[0]);
+		$id.removeClass("selected-letter");
 	},
 	initial: function() {
 		if (this.board && this.hand) {
@@ -490,36 +564,52 @@ var Game = {
 		else
 			$('#messages').text("Bag out of letters");
 	},
-	recallLetter: function(letterEvent) {
-			$('#' + letterEvent[1]).text(letterEvent[0]);
-			letterEvent = null;
+	submitWord: function() {
+		var play = this.board.findPlay();
+		if (this.board.isInline(play)) {
+			var count = this.board.countPlay();
+			console.log("Number of letters played: " + count);
+			this.replenishHand(count);
+			this.board.setPlay(play);
+			$('#messages').text("Valid word: " + this.board.boardToWord(play));
+			word = this.board.boardToWord(play);
+			wordDict = stringToWord(word);
+			score = calculateWordScore(wordDict);
+			this.updateScore(score);
+		}
+		else {
+			$('#messages').text("Invalid word");
+		}
+	},
+	replenishHand: function(count) {
+		for (var i = 0; i < count; i++) {
+			var letter = this.hand.grabLetter();
+			console.log(this.hand);
+			
+			var $space = $('.empty-hand')
+										.first()
+										.text(letter)
+										.removeClass('empty-hand');
+		}
 	},
 	placeLetterFromHand: function(x, y, letter) {
-		//Wait until Play is finished to remove from hand
-		//this.hand.remove(letter);
 		this.board.placeLetter(x, y, letter);
-		console.log("Placed on board: " + letter);
 	},
 	updateScore: function(newPoints) {
 		this.score += newPoints;
+		$('#score').text("Word score: " + newPoints + ", Total score: " + this.score);
 	}
 };
 
-function boardToWordTests() {
-	testBoard = Board.create(6, 6);
-	return testBoard.boardToWord([[1, 2, "D"], [1, 3, "O"], [1, 2, "G"]]) == "DOG" &&
-		testBoard.boardToWord([[1, 5, "U"], [1, 2, "P"]]) == "UP" &&
-		testBoard.boardToWord([[1, 4, "Y"], [2, 4, "O"], [3, 4, "U"]]) == "YOU" &&
-		testBoard.boardToWord([[1, 5, "U"], [1, 2, "P"]]) == testBoard.boardToWord([[1, 3, "U"], [1, 2, "P"]]) &&
-		testBoard.boardToWord([[1, 5, "U"], [1, 2, "P"]]) != "PU";
-}
 function isInlineTests() {
 	var testBoard = Board.create(5, 5);
 	return (testBoard.isInline([[1,2], [1,3], [1, 4]]) == true) &&
 			(testBoard.isInline([[0, 2], [1, 2], [2, 2]]) == true) &&
 			(testBoard.isInline([[0, 3], [0, 4], [0, 1]]) == false) &&
 			(testBoard.isInline([[0, 1], [1, 2]]) == false) &&
-			(testBoard.isInline([[0, 1], [0, 2], [0, 3], [0, 0]]) == false);
+			(testBoard.isInline([[0, 1], [0, 2], [0, 3], [0, 0]]) == false) &&
+			(testBoard.isInline([[0, 0], [1, 1]]) == false) &&
+			(testBoard.isInline([[0, 1], [1, 0]]) == false);
 }
 function isValidHandTests(testBag) {
 	var testHand = Hand.create(testBag, {"B": 1, "A": 2, "Y": 1});
@@ -529,11 +619,17 @@ function isValidHandTests(testBag) {
 		testHand.isValidHand("XBY") == false &&
 		testHand.isValidHand("BAAY") == true;
 }
+function calculateWordScoreTests() {
+	return calculateWordScore({"B": 1, "A": 1, "G": 1}) == 6 &&
+		calculateWordScore({"A": 1, "B": 1, "C": 2}) == 10 &&
+		calculateWordScore({"F": 1, "G": 1, "H": 1}) == 10 &&
+		calculateWordScore({"X": 4}) == 32;
+}
 
+console.log("calculateWordScore tests: " + calculateWordScoreTests());
 var testBag = Bag.create();
 console.log("isInline tests: " + isInlineTests());
 console.log("isValidHand tests: " + isValidHandTests(testBag));
-console.log("boardToWord tests: " + boardToWordTests());
 
 var scrabble = Game.create(document.body);
 
