@@ -1,20 +1,58 @@
 <html>
 <style>
+button {
+	margin: 5px;
+}
 .empty {
 	background-color: grey;
 }
 .empty-hand {
-	background-color: black;
 }
 .selected-letter {
 	background-color: red;
+}
+.error {
+	color: red;
+}
+#board {
+	position: relative;
+}
+#board td{
+	width: 50px;
+	height: 50px;
+	text-align: center;
+	font-size: 35px;
+}
+#hand {
+	margin-top: 10px;
+	margin-bottom: 10px;	
+}
+#hand td{
+	width: 50px;
+	height: 50px;
+	text-align: center;
+	font-size: 35px;
+}
+#messages {
+	margin: 10px;
+	font-weight: bold;
+}
+#score {
+	margin: 10px;
+	font-weight: bold;
 }
 </style>
 <body>
 <script src="jquery-1.9.1.js"></script>
 <script type="text/javascript">
 /*
+VARIANTS:
+Solitaire Scrabble- one player, timed
+Strategy Scrabble- two player, where they can see each others hand
+Clabbers- scrabble, but words played only have to be anagrams of real words
+
 Clean up unneeded functions
+Refactor
 
 Place Board using JQUERY?
 Place Hand using JQUERY?
@@ -24,9 +62,14 @@ How do we access the empty Square objects we create when we create a Board? How 
 Playing hand using letters already on board: 
 check if play includes at least one letter used on board: findPlay to scan for squares where lock is false. Then check for letters on the board that are before and after and in between that array. If there are letters before and/or after and/or in-between, include them in play. Create conditional to check if it's the first play of the game where these conditions don't need to be met.
 
-Replenish hand after word is submitted and verified
-
 isValidWord (string is in word dictionary)
+
+Keep tiles placed on play selected until submitted.
+Deselect old tile and select new tile upon click on different tile.
+
+Write:
+Swap Tiles
+Withdraw Tiles
 
 Board different special bonus positions
 
@@ -34,13 +77,12 @@ effects
 images
 
 BUGS:
-submit word returns null + letter when 2 letters are submitted adjacent and diagonal. isInline fails but if statements still run???
 */
 $(document).ready(function() {
 
 var HAND_SIZE = 7;
-var BOARD_HEIGHT = 10;
-var BOARD_WIDTH = 10;
+var BOARD_HEIGHT = 8;
+var BOARD_WIDTH = 8;
 
 var LETTER_VALUES = {"A": 1, "B": 3, "C": 3, "D": 2, "E": 1, "F": 4, "G": 2, "H": 4, "I": 1, "J": 8, "K": 5, "L": 1, "M": 3, "N": 1, "O": 1, "P": 3, "Q": 10, "R": 1, "S": 1, "T": 1, "U": 1, "V": 4, "W": 4, "X": 8, "Y": 4, "Z": 10, "*": 0}
 
@@ -286,11 +328,11 @@ var Square = {
 	construct: function(x, y) {
 		this.x = x;
 		this.y = y;
-		this.letter = "x";
+		this.letter = "  ";
 		this.lock = false;
 	},
 	isEmpty: function() {
-		return this.letter == "x";
+		return this.letter == "  ";
 	},
 	setLock: function() {
 		this.lock = true;
@@ -319,7 +361,7 @@ var Board = {
 			var row = [];
 			var tableRow = dom("TR");
 			for (var x = 0; x < this.width; x++) {
-				var tableSquare = dom("TD", {"id": String(x) + String(y), "class": "empty"}, "x");
+				var tableSquare = dom("TD", {"id": String(x) + String(y), "class": "empty"}, "  ");
 				tableRow.appendChild(tableSquare);
 				// row.push(Square.create(x, y));
 				row.push([lock, null]);
@@ -444,6 +486,8 @@ var Game = {
 		this.place = place;
 		this.score = 0;
 		
+		this.initial();
+		
 		$('<button id="newGame">New game</button>').appendTo(this.place);
 		$('#newGame').on('click', function() {
 			location.reload();
@@ -454,27 +498,25 @@ var Game = {
 		$('<button id="submitWord">Submit word</button>').appendTo(this.place);
 		$('#submitWord').on('click', method(this, 'submitWord'));
 
-		$('<div id="score">Score: ' + this.score + '</div>').appendTo(this.place);
+		$('<div id="score">&nbsp;</div>').appendTo(this.place);
 		$('<div id="messages">&nbsp;</div>').appendTo(this.place);
 		
-		this.initial();
-		
-		var letterEvent = null;
-		var self = this;
+		var letterEvent = null,
+			self = this;
 		
 		//Hand click handlers
 		$('#hand').children().children().children().each(function() {
 			var $this = $(this);
 			$this.on('click', function() {
 				// Placing a letter back in hand
-				if (letterEvent && $this.text() == "x") {
+				if (letterEvent && $this.text() == "  ") {
 					$this.text(letterEvent[0]);
 					$this.removeClass("empty").removeClass("empty-hand");
 					
 					$id = $('#' + letterEvent[1])
 					square = $id.attr('id');
 					$id.removeClass("selected-letter")
-						.text("x");
+						.text("  ");
 					// Determining whether letter was grabbed from board
 					if (letterEvent[1].length == 2) {
 						self.hand.addLetter(letterEvent[0]);
@@ -487,7 +529,7 @@ var Game = {
 					letterEvent = null;
 				}
 				// Grabbing letter from hand
-				else if (!letterEvent && $this.text() != "x") {
+				else if (!letterEvent && $this.text() != "  ") {
 					$this.addClass("selected-letter");
 					letterEvent = [$this.text(), $this.attr("id")];
 				}
@@ -522,7 +564,7 @@ var Game = {
 						self.board.setLock(square[0], square[1], true);
 						$id.addClass('empty');
 					}
-					$id.text("x");
+					$id.text("  ");
 					letterEvent = null;
 				}
 				// Grab letter from board
@@ -556,10 +598,12 @@ var Game = {
 	},
 	newHand: function() {
 		if (this.board && this.hand && (this.bag.count() >= HAND_SIZE)) {
+		/*
 			this.hand.clear();
 			this.hand.removeFromPage(this.place);
 			this.hand = Hand.create(this.bag, null);
 			this.hand.placeToPage(this.place);
+		*/
 		}
 		else
 			$('#messages').text("Bag out of letters");
@@ -571,14 +615,16 @@ var Game = {
 			console.log("Number of letters played: " + count);
 			this.replenishHand(count);
 			this.board.setPlay(play);
-			$('#messages').text("Valid word: " + this.board.boardToWord(play));
+			$('#messages').text("Valid word: " + this.board.boardToWord(play))
+							.removeClass('error');
 			word = this.board.boardToWord(play);
 			wordDict = stringToWord(word);
 			score = calculateWordScore(wordDict);
 			this.updateScore(score);
 		}
 		else {
-			$('#messages').text("Invalid word");
+			$('#messages').text("Invalid word")
+							.addClass('error');
 		}
 	},
 	replenishHand: function(count) {
