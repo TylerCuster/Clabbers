@@ -8,6 +8,9 @@ button {
 }
 .empty-hand {
 }
+.placed-letter {
+	background-color: green;
+}
 .selected-letter {
 	background-color: red;
 }
@@ -51,21 +54,13 @@ Solitaire Scrabble- one player, timed
 Strategy Scrabble- two player, where they can see each others hand
 Clabbers- scrabble, but words played only have to be anagrams of real words
 
-Clean up unneeded functions
-Refactor
-
-Place Board using JQUERY?
-Place Hand using JQUERY?
-
-How do we access the empty Square objects we create when we create a Board? How do we define multiple variables within a loop? eval? Should we even use a Square object or just add the traits we need to the array?
-
-Playing hand using letters already on board: 
-check if play includes at least one letter used on board: findPlay to scan for squares where lock is false. Then check for letters on the board that are before and after and in between that array. If there are letters before and/or after and/or in-between, include them in play. Create conditional to check if it's the first play of the game where these conditions don't need to be met.
+Check if play includes letter already on board. Not necessary if play is the first play.
 
 isValidWord (string is in word dictionary)
 
 Keep tiles placed on play selected until submitted.
 Deselect old tile and select new tile upon click on different tile.
+When word is submitted with letter highlighted, that highlighted letter isn't 'locked'
 
 Write:
 Swap Tiles
@@ -75,6 +70,14 @@ Board different special bonus positions
 
 effects
 images
+
+Clean up unneeded functions
+Refactor
+
+Place Board using JQUERY?
+Place Hand using JQUERY?
+
+How do we access the empty Square objects we create when we create a Board? How do we define multiple variables within a loop? eval? Should we even use a Square object or just add the traits we need to the array?
 
 BUGS:
 */
@@ -377,7 +380,7 @@ var Board = {
 			return this.board[y][x][1];
 		}
 		catch (error) {
-			throw "Space not on game board: " + error.message;
+			return null;
 		}
 	},
 	isEmpty: function(x, y) {
@@ -399,29 +402,38 @@ var Board = {
 	getLock: function(x, y) {
 		return this.board[y][x][0];
 	},
-	// Takes array of arrays in the form [x, y]. Are they all in a single row or column? Are all the values adjacent to each other? If so, returns true. Requires there are at least two tiles played.
-	isInline: function(play) {
-		if (play.length < 2) 
-			return true;
-		var xValue = play[0][0];
-		var yValue = play[0][1];
+	rowOrColumn: function(play) {
+		if (play.length < 2)
+			return "single";
 		if (play[0][0] == play[1][0])
-			var row = true;
-		else if (play[0][1] = play[1][1])
-			var column = true;
+			return "column";
+		else if (play[0][1] == play[1][1])
+			return "row";
 		else
 			return false;
-		for (var i = 1; i < play.length; i++) {
-			if (row) {
-				// Checks if value is in the same row and if the y value is adjacent to the previous y value
-				if ((play[i][0] != xValue) || (play[i][1] != (play[i-1][1] + 1)))
-					return false;
-			}
-			if (column) {
-				if ((play[i][1] != yValue) || (play[i][0] != (play[i-1][0] + 1)))
-					return false;
-			}
-		};
+	},
+	// Takes array of arrays in the form [x, y]. Are they all in a single row or column? Are all the values adjacent to each other? If so, returns true. Requires there are at least two tiles played.
+	isInline: function(play) {
+		var xValue = play[0][0],
+			yValue = play[0][1],
+			rowOrColumn = this.rowOrColumn(play);
+		if (rowOrColumn) {
+			for (var i = 1; i < play.length; i++) {
+				if (rowOrColumn == "column") {
+					// Checks if value is in the same row and if the y value is adjacent to the previous y value
+					if ((play[i][0] != xValue) || (play[i][1] != (play[i-1][1] + 1)))
+						return false;
+				}
+				else if (rowOrColumn == "row") {
+					if ((play[i][1] != yValue) || (play[i][0] != (play[i-1][0] + 1)))
+						return false;
+				}
+				else if (rowOrColumn == "single")
+					return true;
+			};
+		}
+		else
+			return false;
 		return true;
 	},
 	// Scans board for letters with a lock of false to determine the play
@@ -434,6 +446,65 @@ var Board = {
 			}
 		}
 		return play;
+	},
+	// Scans board with play from findPlay plus the letters that are already on the board that the player is playing from
+	// Checks if letter is placed on board after the row of tiles that are represented by play. If so, places letter in play array. Runs itself again to check.
+	findPlayPlus: function(play) {
+		var rowOrColumn = this.rowOrColumn(play),
+			playPlus = play;
+		if (rowOrColumn == "row") {
+			var rowAfter = this.rowAfterPlay(play);
+			while (rowAfter) {
+				playPlus.push(rowAfter);
+				rowAfter = this.rowAfterPlay(playPlus);
+			}
+			var rowBefore = this.rowBeforePlay(play);
+			while (rowBefore) {
+				playPlus.unshift(rowBefore)
+				rowBefore = this.rowBeforePlay(playPlus);
+			}
+		}
+		if (rowOrColumn == "column") {
+			var columnAfter = this.columnAfterPlay(play);
+			while (columnAfter) {
+				playPlus.push(columnAfter);
+				columnAfter = this.columnAfterPlay(playPlus);
+			}
+			var columnBefore = this.columnBeforePlay(play);
+			while (columnBefore) {
+				playPlus.push(columnBefore);
+				columnBefore = this.columnBeforePlay(playPlus);
+			}
+		}
+		return playPlus;
+	},
+	rowAfterPlay: function(play) {
+		var lastInRow = play[play.length-1];
+		if (this.valueAt(lastInRow[0]+1, lastInRow[1]))
+			return [lastInRow[0]+1, lastInRow[1]];
+		else
+			return null;
+	},
+	rowBeforePlay: function(play) {
+		var firstInRow = play[0];
+		if (this.valueAt(firstInRow[0]-1, firstInRow[1]))
+			return [firstInRow[0]-1, firstInRow[1]];
+		else
+			return null;
+	},
+	columnAfterPlay: function(play) {
+		var lastInColumn = play[play.length-1];
+		if (this.valueAt(lastInColumn[0], lastInColumn[1]+1))
+			return [lastInColumn[0], lastInColumn[1]+1];
+		else
+			return null;
+	},
+	columnBeforePlay: function(play) {
+		var firstInColumn = play[0];
+		if (this.valueAt(firstInColumn[0], firstInColumn[1]-1))
+			return [firstInColumn[0], firstInColumn[1]-1];
+		else
+			return null;
 	},
 	setPlay: function(play) {
 		for (var i = 0; i < play.length; i++) {
@@ -522,7 +593,8 @@ var Game = {
 						self.hand.addLetter(letterEvent[0]);
 						self.board.removeLetter(square[0], square[1]);
 						self.board.setLock(square[0], square[1], true);
-						$id.addClass('empty');
+						$id.addClass('empty')
+							.removeClass('placed-letter');
 					}
 					else
 						$id.addClass('empty-hand');
@@ -546,11 +618,13 @@ var Game = {
 			var $this = $(this);
 			$this.on('click', function() {
 				var square = $this.attr("id");
+				console.log(square);
 				// Place letter on board
 				if ((letterEvent) && (self.board.isEmpty(square[0], square[1]))) {
 					self.placeLetterFromHand(square[0], square[1], letterEvent[0]);
 					$('#' + String(square[0]) + String(square[1])).text(letterEvent[0])
-																	.removeClass("empty");
+																	.removeClass('empty')
+																	.addClass('placed-letter');
 					
 					$id = $('#' + letterEvent[1])
 					square = $id.attr('id');
@@ -562,7 +636,8 @@ var Game = {
 					else {
 						self.board.removeLetter(square[0], square[1]);
 						self.board.setLock(square[0], square[1], true);
-						$id.addClass('empty');
+						$id.addClass('empty')
+							.removeClass('placed-letter');
 					}
 					$id.text("  ");
 					letterEvent = null;
@@ -590,6 +665,7 @@ var Game = {
 			this.hand.removeFromPage(this.place);
 		}
 		this.score = 0;
+		this.first = true;
 		this.board = Board.create(BOARD_WIDTH, BOARD_HEIGHT);
 		this.board.placeToPage(this.place);
 		this.bag = Bag.create();
@@ -609,18 +685,24 @@ var Game = {
 			$('#messages').text("Bag out of letters");
 	},
 	submitWord: function() {
-		var play = this.board.findPlay();
-		if (this.board.isInline(play)) {
-			var count = this.board.countPlay();
-			console.log("Number of letters played: " + count);
+		var play = this.board.findPlay(),
+			playPlus = this.board.findPlayPlus(play),
+			count = this.board.countPlay(),
+			check = true;
+		// Check if play includes letter placed on board
+		if (play == playPlus && this.first == false) {
+				check = false;
+			}
+		if (this.board.isInline(play) && check) {
+			var word = this.board.boardToWord(playPlus),
+				wordDict = stringToWord(word),
+				score = calculateWordScore(wordDict);
 			this.replenishHand(count);
 			this.board.setPlay(play);
-			$('#messages').text("Valid word: " + this.board.boardToWord(play))
+			$('#messages').text("Valid word: " + word)
 							.removeClass('error');
-			word = this.board.boardToWord(play);
-			wordDict = stringToWord(word);
-			score = calculateWordScore(wordDict);
 			this.updateScore(score);
+			this.first = false;
 		}
 		else {
 			$('#messages').text("Invalid word")
@@ -630,7 +712,6 @@ var Game = {
 	replenishHand: function(count) {
 		for (var i = 0; i < count; i++) {
 			var letter = this.hand.grabLetter();
-			console.log(this.hand);
 			
 			var $space = $('.empty-hand')
 										.first()
@@ -657,6 +738,15 @@ function isInlineTests() {
 			(testBoard.isInline([[0, 0], [1, 1]]) == false) &&
 			(testBoard.isInline([[0, 1], [1, 0]]) == false);
 }
+function rowOrColumnTests() {
+	var testBoard = Board.create(5, 5);
+	return testBoard.rowOrColumn([[0, 2], [1, 2], [2, 2]]) == "row" &&
+			(testBoard.rowOrColumn([[1, 2], [1, 3], [1, 4]]) == "column") &&
+			(testBoard.rowOrColumn([[0, 3], [0, 4], [0, 1]]) == "column") &&
+			(testBoard.rowOrColumn([[0, 1], [1, 2]]) == false) &&
+			(testBoard.rowOrColumn([[0, 1], [1, 0]]) == false) &&
+			(testBoard.rowOrColumn([[0, 1]]) == "single");
+}
 function isValidHandTests(testBag) {
 	var testHand = Hand.create(testBag, {"B": 1, "A": 2, "Y": 1});
 	return testHand.isValidHand("BABY") == false &&
@@ -673,8 +763,9 @@ function calculateWordScoreTests() {
 }
 
 console.log("calculateWordScore tests: " + calculateWordScoreTests());
-var testBag = Bag.create();
+console.log("rowOrColumn tests: " + rowOrColumnTests());
 console.log("isInline tests: " + isInlineTests());
+var testBag = Bag.create();
 console.log("isValidHand tests: " + isValidHandTests(testBag));
 
 var scrabble = Game.create(document.body);
