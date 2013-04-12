@@ -54,13 +54,12 @@ Solitaire Scrabble- one player, timed
 Strategy Scrabble- two player, where they can see each others hand
 Clabbers- scrabble, but words played only have to be anagrams of real words
 
-Check if play includes letter already on board. Not necessary if play is the first play.
+Re-write findPlayPlus to include single tiles and locked tiles placed in middle of play
 
-isValidWord (string is in word dictionary)
-
-Keep tiles placed on play selected until submitted.
 Deselect old tile and select new tile upon click on different tile.
 When word is submitted with letter highlighted, that highlighted letter isn't 'locked'
+
+isValidWord (string is in word dictionary)
 
 Write:
 Swap Tiles
@@ -436,19 +435,49 @@ var Board = {
 			return false;
 		return true;
 	},
-	// Scans board for letters with a lock of false to determine the play
-	findPlay: function() {
-		play = [];
-		for (var y = 0; y < this.height; y++) {
-			for (var x = 0; x < this.width; x++) {	
-				if (this.board[y][x][0] == false)
-					play.push([x, y]);
-			}
-		}
-		return play;
-	},
 	// Scans board with play from findPlay plus the letters that are already on the board that the player is playing from
 	// Checks if letter is placed on board after the row of tiles that are represented by play. If so, places letter in play array. Runs itself again to check.
+	// TODO: Make findPlayPlus start with the first tile from findPlay. Then scan the board from that first tile to determine the next in line. If there's a next one, add it to playPlus. If not, break. These tiles for which it scans can be locked or unlocked. Create 2 different array possibilities. One for column, one for row. See if either passes. No need to determine whether it's a column or row first. Just run the recursion and record the results. If none, one, or both the row and column pass isInline, confirm the word(s) and give the score.
+	// TODO: Delete rowOrColumn
+	// TODO: Make findPlayPlus pick up both locked squares and other tiles in Play
+	findPlayPlus: function(play) {
+		var first = play[0],
+			row = [first],
+			column = [first];
+		var rowAfter = this.rowAfterPlay(first);
+		while (rowAfter) {
+			row.push(rowAfter);
+			rowAfter = this.rowAfterPlay(row);
+		}
+		var rowBefore = this.rowBeforePlay(first);
+		while (rowBefore) {
+			row.unshift(rowBefore)
+			rowBefore = this.rowBeforePlay(row);
+		}
+		/*
+		var columnAfter = this.columnAfterPlay(first);
+		while (columnAfter) {
+			column.push(columnAfter);
+			columnAfter = this.columnAfterPlay(column);
+		}
+		var columnBefore = this.columnBeforePlay(first);
+		while (columnBefore) {
+			column.unshift(columnBefore);
+			columnBefore = this.columnBeforePlay(column);
+		}
+		*/
+		if (row.length > 1) {
+			console.log("row");
+			return row;
+		}
+		else if (column.length > 1) {
+			console.log("column");
+			return column;
+		}
+		else
+			return play;
+	},
+	/*
 	findPlayPlus: function(play) {
 		var rowOrColumn = this.rowOrColumn(play),
 			playPlus = play;
@@ -472,11 +501,20 @@ var Board = {
 			}
 			var columnBefore = this.columnBeforePlay(play);
 			while (columnBefore) {
-				playPlus.push(columnBefore);
+				playPlus.unshift(columnBefore);
 				columnBefore = this.columnBeforePlay(playPlus);
 			}
 		}
 		return playPlus;
+	},
+	*/
+	// TODO: How to pass function with arguments to object when we don't know function's name?
+	playPlusHandler: function(fn) {
+		var fn = this[fn](play);
+		while (fn) {
+			playPlus.push(fn);
+			fn = this[fn](play);
+		}
 	},
 	rowAfterPlay: function(play) {
 		var lastInRow = play[play.length-1];
@@ -506,14 +544,8 @@ var Board = {
 		else
 			return null;
 	},
-	setPlay: function(play) {
-		for (var i = 0; i < play.length; i++) {
-			var x = play[i][0];
-			var y = play[i][1];
-			this.board[y][x][0] = true;
-		}
-	},
-	countPlay: function() {
+	// Scans board for letters with a lock of false to determine the play
+	findPlay: function() {
 		play = [];
 		for (var y = 0; y < this.height; y++) {
 			for (var x = 0; x < this.width; x++) {	
@@ -521,8 +553,16 @@ var Board = {
 					play.push([x, y]);
 			}
 		}
-		return play.length;
+		return play;
 	},	
+	// Sets play as permanent; i.e., 'locks' tiles on board
+	setPlay: function(play) {
+		for (var i = 0; i < play.length; i++) {
+			var x = play[i][0];
+			var y = play[i][1];
+			this.board[y][x][0] = true;
+		}
+	},
 	// Takes array of arrays in the form [x, y]. Return string from letters placed on board.
 	boardToWord: function(play) {
 		word = "";
@@ -575,6 +615,7 @@ var Game = {
 		var letterEvent = null,
 			self = this;
 		
+		//children().children().children() means #hand table -> tbody -> tr -> td
 		//Hand click handlers
 		$('#hand').children().children().children().each(function() {
 			var $this = $(this);
@@ -618,7 +659,6 @@ var Game = {
 			var $this = $(this);
 			$this.on('click', function() {
 				var square = $this.attr("id");
-				console.log(square);
 				// Place letter on board
 				if ((letterEvent) && (self.board.isEmpty(square[0], square[1]))) {
 					self.placeLetterFromHand(square[0], square[1], letterEvent[0]);
@@ -686,19 +726,23 @@ var Game = {
 	},
 	submitWord: function() {
 		var play = this.board.findPlay(),
+			count = play.length,
 			playPlus = this.board.findPlayPlus(play),
-			count = this.board.countPlay(),
 			check = true;
+		console.log(playPlus);
 		// Check if play includes letter placed on board
-		if (play == playPlus && this.first == false) {
+		if (playPlus.length == count && this.first == false) {
 				check = false;
 			}
-		if (this.board.isInline(play) && check) {
+		// TODO: Sort playPlus before checking isInline
+		// TODO: Re-write sequence submitWord to accept a possible 2 words per play
+		if (this.board.isInline(playPlus) && check) {
 			var word = this.board.boardToWord(playPlus),
 				wordDict = stringToWord(word),
 				score = calculateWordScore(wordDict);
 			this.replenishHand(count);
 			this.board.setPlay(play);
+			this.setPlayStyle(play);
 			$('#messages').text("Valid word: " + word)
 							.removeClass('error');
 			this.updateScore(score);
@@ -717,6 +761,14 @@ var Game = {
 										.first()
 										.text(letter)
 										.removeClass('empty-hand');
+		}
+	},
+	// Removes styling for letters placed on board during play
+	setPlayStyle: function(play) {
+		for (var i = 0; i < play.length; i++) {
+			var x = play[i][0];
+			var y = play[i][1];
+			$('#' + x + y).removeClass('placed-letter');
 		}
 	},
 	placeLetterFromHand: function(x, y, letter) {
