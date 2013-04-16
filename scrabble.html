@@ -44,6 +44,10 @@ button {
 	margin: 10px;
 	font-weight: bold;
 }
+#scoreString {
+	margin: 10px;
+	font-weight: bold;
+}
 </style>
 <body>
 <script src="jquery-1.9.1.js"></script>
@@ -53,8 +57,6 @@ VARIANTS:
 Solitaire Scrabble- one player, timed
 Strategy Scrabble- two player, where they can see each others hand
 Clabbers- scrabble, but words played only have to be anagrams of real words
-
-Re-write findPlayPlus to include single tiles and locked tiles placed in middle of play
 
 Deselect old tile and select new tile upon click on different tile.
 When word is submitted with letter highlighted, that highlighted letter isn't 'locked'
@@ -66,6 +68,7 @@ Swap Tiles
 Withdraw Tiles
 
 Board different special bonus positions
+Update updateScore to spell out the score calculation
 
 effects
 images
@@ -108,6 +111,15 @@ function calculateWordScore(word) {
 		score += LETTER_VALUES[letter] * Number(count);
 	});
 	return Number(score);
+}
+
+// Takes word as dictionary object, outputs string of calculated word score
+function stringWordScore(word) {
+	scoreString = "";
+	forEachIn(word, function(letter, count) {
+		scoreString += letter + ": " + LETTER_VALUES[letter] + "(" + count + ") + ";
+	});
+	return scoreString.slice(0, -2);
 }
 
 function wordToString(word) {
@@ -444,36 +456,32 @@ var Board = {
 		var first = play[0],
 			row = [first],
 			column = [first];
-		var rowAfter = this.rowAfterPlay(first);
+		var rowAfter = this.rowAfterPlay(row);
 		while (rowAfter) {
 			row.push(rowAfter);
 			rowAfter = this.rowAfterPlay(row);
 		}
-		var rowBefore = this.rowBeforePlay(first);
+		var rowBefore = this.rowBeforePlay(row);
 		while (rowBefore) {
 			row.unshift(rowBefore)
 			rowBefore = this.rowBeforePlay(row);
 		}
-		/*
-		var columnAfter = this.columnAfterPlay(first);
+		var columnAfter = this.columnAfterPlay(column);
 		while (columnAfter) {
 			column.push(columnAfter);
 			columnAfter = this.columnAfterPlay(column);
 		}
-		var columnBefore = this.columnBeforePlay(first);
+		var columnBefore = this.columnBeforePlay(column);
 		while (columnBefore) {
 			column.unshift(columnBefore);
 			columnBefore = this.columnBeforePlay(column);
 		}
-		*/
-		if (row.length > 1) {
-			console.log("row");
-			return row;
-		}
-		else if (column.length > 1) {
-			console.log("column");
-			return column;
-		}
+		if (row.length > 1 && column.length > 1)
+			return {row: row, column: column};
+		else if (row.length > 1)
+			return {row: row, column: null};
+		else if (column.length > 1)
+			return {row: null, column: column};
 		else
 			return play;
 	},
@@ -610,6 +618,7 @@ var Game = {
 		$('#submitWord').on('click', method(this, 'submitWord'));
 
 		$('<div id="score">&nbsp;</div>').appendTo(this.place);
+		$('<div id="scoreString">&nbsp;</div>').appendTo(this.place);
 		$('<div id="messages">&nbsp;</div>').appendTo(this.place);
 		
 		var letterEvent = null,
@@ -728,31 +737,43 @@ var Game = {
 		var play = this.board.findPlay(),
 			count = play.length,
 			playPlus = this.board.findPlayPlus(play),
+			row = playPlus.row,
+			column = playPlus.column,
+			self = this,
 			check = true;
-		console.log(playPlus);
-		// Check if play includes letter placed on board
-		if (playPlus.length == count && this.first == false) {
+		// Check if play includes at least one letter already placed on board
+		if (playPlus.length == count && self.first == false) {
 				check = false;
 			}
-		// TODO: Sort playPlus before checking isInline
-		// TODO: Re-write sequence submitWord to accept a possible 2 words per play
-		if (this.board.isInline(playPlus) && check) {
-			var word = this.board.boardToWord(playPlus),
-				wordDict = stringToWord(word),
-				score = calculateWordScore(wordDict);
-			this.replenishHand(count);
-			this.board.setPlay(play);
-			this.setPlayStyle(play);
-			$('#messages').text("Valid word: " + word)
-							.removeClass('error');
-			this.updateScore(score);
-			this.first = false;
+		var submitWordHelper = function(rowOrColumn) {
+			if (self.board.isInline(rowOrColumn) && check) {
+				var word = self.board.boardToWord(rowOrColumn),
+					wordDict = stringToWord(word),
+					score = calculateWordScore(wordDict);
+				self.replenishHand(count);
+				self.board.setPlay(play);
+				self.setPlayStyle(play);
+				$('#messages').text("Valid word: " + word)
+								.removeClass('error');
+				$('#scoreString').text("Word calculation: " + stringWordScore(wordDict));
+				self.updateScore(score);
+				self.first = false;
+			}
+			else {
+				$('#messages').text("Invalid word")
+								.addClass('error');
+			}
 		}
-		else {
-			$('#messages').text("Invalid word")
-							.addClass('error');
+		if (row && column) {
+			submitWordHelper(row);
+			submitWordHelper(column);
+			$('#messages').text("Two valid words submitted");
 		}
-	},
+		else if (row)
+			submitWordHelper(row);
+		else if (column)
+			submitWordHelper(column);
+	},	
 	replenishHand: function(count) {
 		for (var i = 0; i < count; i++) {
 			var letter = this.hand.grabLetter();
