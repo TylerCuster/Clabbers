@@ -58,21 +58,21 @@ Solitaire Scrabble- one player, timed
 Strategy Scrabble- two player, where they can see each others hand
 Clabbers- scrabble, but words played only have to be anagrams of real words
 
-Re-write findPlayPlus to include appendage words
+Make findPlayPlus work with only one letter placed
 
-lookup: how to search arrays
-Initial hand draws certain percentage of vowels
+How to call function as argument?
+Re-write findPlayPlus using function handler
+
+TEST LETTER PLACEMENT WELL!!
+
+Modify word calculation to display score of appendage words
+
+Make it a requirement that play includes at least one letter from already played letter
 
 lookup: how to prompt user input
 Blank letter
 
-lookup: img of game board
-Board different special bonus positions
-
-isValidWord (string is in word dictionary)
-
-effects
-images
+isInDict (string is in word dictionary)
 
 Clean up unneeded functions
 Refactor
@@ -84,19 +84,37 @@ How do we access the empty Square objects we create when we create a Board? How 
 
 Deselect old tile and select new tile upon click on different tile.
 
+lookup: img of game board
+Board different special bonus positions
+
+effects
+images
+
 BUGS:
 */
 $(document).ready(function() {
 
 var HAND_SIZE = 7;
-var BOARD_HEIGHT = 8;
-var BOARD_WIDTH = 8;
+var BOARD_HEIGHT = 15;
+var BOARD_WIDTH = 15;
 
 var LETTER_VALUES = {"A": 1, "B": 3, "C": 3, "D": 2, "E": 1, "F": 4, "G": 2, "H": 4, "I": 1, "J": 8, "K": 5, "L": 1, "M": 3, "N": 1, "O": 1, "P": 3, "Q": 10, "R": 1, "S": 1, "T": 1, "U": 1, "V": 4, "W": 4, "X": 8, "Y": 4, "Z": 10, "*": 0};
 
 var LETTER_COUNTS = {"A": 9, "B": 2, "C": 2, "D": 4, "E": 12, "F": 2, "G": 3, "H": 2, "I": 9, "J": 1, "K": 1, "L": 4, "M": 2, "N": 6, "O": 8, "P": 2, "Q": 1, "R": 6, "S": 4, "T": 6, "U": 4, "V": 2, "W": 2, "X": 1, "Y": 2, "Z": 1, "*": 2};
 
 var LETTER_VOWELS = ["A", "E", "I", "O", "U"];
+
+// How many identical values between array1 and array2 where array1 and array2 are composed of arrays of length two
+function matches(array1, array2) {
+	var count = 0;
+	for (var i = 0; i < array1.length; i++) {
+		for (var j = 0; j <array2.length; j++) {
+			if (array1[i][0] == array2[j][0] && array1[i][1] == array2[j][1])
+				count += 1;
+		}
+	}
+	return count;
+}
 
 function randomInteger(below) {
 	return Math.floor(Math.random() * below);
@@ -318,26 +336,30 @@ var Hand = Dictionary.extend({
 	else
 		return null;
 	},
-	// Insert vowel argument for initialHand. Call with vowels = 0 for newHand method. For new games, run with certain vowel limit so that the first two selections are vowels. Dive into Bag and select letter. If it's a vowel, place in hand and remove from bag. If not, do nothing and try again. Once vowels limit is reached, continue on normally, but now select only consonants.
+	// Insert vowel argument for initialHand. Call with vowels = 0 for newHand method. For new games, run with certain vowel limit so that the first integer 'vowels' selections are vowels. Dive into Bag and select letter. If it's a vowel, place in hand and remove from bag. If not, do nothing and try again. Once vowels limit is reached, continue on normally, but now select only consonants.
 	// How to search array for string?
 	initialHand: function(vowels) {
 		var count = 0;
 		for (var i = 0; i < HAND_SIZE-vowels; i++) {
 			while (count < vowels) {
 				var letter = this.bag.selectRandomLetter();
-				for (var j = 0; j < LETTER_VOWELS.length; j++) {
-					if (LETTER_VOWELS[j] == letter) {
+				if (LETTER_VOWELS.indexOf(letter) != -1) {
 						this.addLetter(letter);
 						this.bag.remove(letter);
 						count += 1;
-						console.log(letter);
-						console.log("count + 1");
 					}
 				}
+			var check = true;
+			while (check) {
+				var letter = this.bag.selectRandomLetter();
+				if (LETTER_VOWELS.indexOf(letter) == -1) {
+					this.addLetter(letter);
+					this.bag.remove(letter);
+					check = false;
+				}
 			}
-			this.grabLetter();
 		}
-},
+	},
 	removeLetter: function(letter) {
 		if (this.contains(letter) == false || (this.lookup(letter) < 0))
 			throw "Hand doesn't contain letter";
@@ -399,7 +421,7 @@ var Board = {
 			var row = [];
 			var tableRow = dom("TR");
 			for (var x = 0; x < this.width; x++) {
-				var tableSquare = dom("TD", {"id": String(x) + String(y), "class": "empty"}, "  ");
+				var tableSquare = dom("TD", {"id": String(x) + "-" + String(y), "class": "empty"}, "  ");
 				tableRow.appendChild(tableSquare);
 				// row.push(Square.create(x, y));
 				row.push([lock, null]);
@@ -486,13 +508,15 @@ var Board = {
 	},
 	// Scans board with play from findPlay plus the letters that are already on the board that the player is playing from
 	// Checks if letter is placed on board after the row of tiles that are represented by play. If so, places letter in play array. Runs itself again to check.
-	// findPlayPlus start with the first tile from findPlay. Then scan the board from that first tile to determine the next in line. If there's a next one, add it to playPlus. If not, break. These tiles for which it scans can be locked or unlocked. Create 2 different array possibilities. One for column, one for row. See if either passes. No need to determine whether it's a column or row first. Just run the recursion and record the results. If none, one, or both the row and column pass isInline, confirm the word(s) and give the score.
+	// findPlayPlus start with the first tile from findPlay. Then scan the board from that first tile to determine the next in line. If there's a next one, add it to playPlus. If not, break. These tiles for which it scans can be locked or unlocked.
 	// From each new sequence in the loop, check left or right if it's a column, up or down if it's a row, to determine a possible new word. Add all those possible new array words to returned object as optional attributes
 	// Determine whether play is row or column. If it's a row, run row functions. Once completed, run column functions to determine appendages. Keep track of column appendages in object.appendages.
+	// As of now, you must play > 1 letters per play
 	findPlayPlus: function(play) {
 		var first = play[0],
 			row = [first],
-			column = [first];
+			column = [first],
+			playPlus = {row: null, column: null, appendages: []};
 		var rowAfter = this.rowAfterPlay(row);
 		while (rowAfter) {
 			row.push(rowAfter);
@@ -502,6 +526,29 @@ var Board = {
 		while (rowBefore) {
 			row.unshift(rowBefore)
 			rowBefore = this.rowBeforePlay(row);
+		}
+		if ((row.length > 1) && (matches(row, play) > 1)) {
+			for (var i = 0; i < row.length; i++) {
+					var appendage = [row[i]];
+					if (matches(appendage, play) > 0) {
+						var columnAfter = this.columnAfterPlay(appendage);
+						while (columnAfter) {
+							appendage.push(columnAfter);
+							columnAfter = this.columnAfterPlay(appendage);
+						}
+						var columnBefore = this.columnBeforePlay(appendage);
+						while (columnBefore) {
+							appendage.unshift(columnBefore);
+							columnBefore = this.columnBeforePlay(appendage);
+						}
+						if (appendage.length > 1) {
+							playPlus.appendages.push(appendage);
+						}
+				}
+			}
+			playPlus.row = row;
+			console.log(playPlus);
+			return playPlus;
 		}
 		var columnAfter = this.columnAfterPlay(column);
 		while (columnAfter) {
@@ -513,14 +560,31 @@ var Board = {
 			column.unshift(columnBefore);
 			columnBefore = this.columnBeforePlay(column);
 		}
-		if (row.length > 1 && column.length > 1)
-			return {row: row, column: column, appendages: null};
-		else if (row.length > 1)
-			return {row: row, column: null, appendages: null};
-		else if (column.length > 1)
-			return {row: null, column: column, appendages: null};
-		else
-			return play;
+		console.log(column);
+		if ((column.length > 1) && (matches(column, play) > 1)) {
+			for (var i = 0; i < column.length; i++) {
+				var appendage = [column[i]];
+				if (matches(appendage, play) > 0) {
+					var rowAfter = this.rowAfterPlay(appendage);
+					while (rowAfter) {
+						appendage.push(rowAfter);
+						rowAfter = this.rowAfterPlay(appendage);
+					}
+					var rowBefore = this.rowBeforePlay(appendage);
+					while (rowBefore) {
+						appendage.unshift(rowBefore)
+						rowBefore = this.rowBeforePlay(appendage);
+					}
+					if (appendage.length > 1) {
+						playPlus.appendages.push(appendage);
+					}
+				}
+			}
+			playPlus.column = column;
+			console.log(playPlus);
+			return playPlus;
+		}
+		return play;
 	},
 	// TODO: How to pass function with arguments to object when we don't know function's name?
 	playPlusHandler: function(fn) {
@@ -645,11 +709,12 @@ var Game = {
 					$this.removeClass("empty").removeClass("empty-hand");
 					
 					$id = $('#' + self.letterEvent[1])
-					square = $id.attr('id');
+					var square = $id.attr('id');
 					$id.removeClass("selected-letter")
 						.text("  ");
 					// Determining whether letter was grabbed from board
-					if (self.letterEvent[1].length == 2) {
+					if (self.letterEvent[1].length >= 2) {
+						square = square.split("-");
 						self.hand.addLetter(self.letterEvent[0]);
 						self.board.removeLetter(square[0], square[1]);
 						self.board.setLock(square[0], square[1], true);
@@ -677,11 +742,12 @@ var Game = {
 		$('#board').children().children().children().each(function() {
 			var $this = $(this);
 			$this.on('click', function() {
-				var square = $this.attr("id");
+				var square = $this.attr("id"),
+					square = square.split("-");
 				// Place letter on board
 				if ((self.letterEvent) && (self.board.isEmpty(square[0], square[1]))) {
 					self.board.placeLetter(square[0], square[1], self.letterEvent[0]);
-					$('#' + String(square[0]) + String(square[1])).text(self.letterEvent[0])
+					$('#' + String(square[0]) + "-" + String(square[1])).text(self.letterEvent[0])
 																	.removeClass('empty')
 																	.addClass('placed-letter');
 					
@@ -693,6 +759,7 @@ var Game = {
 						$id.addClass('empty-hand');
 					}
 					else {
+						square = square.split("-");
 						self.board.removeLetter(square[0], square[1]);
 						self.board.setLock(square[0], square[1], true);
 						$id.addClass('empty')
@@ -735,17 +802,24 @@ var Game = {
 		var play = this.board.findPlay(),
 			countPlay = play.length,
 			playPlus = this.board.findPlayPlus(play),
-			countPlayPlus = playPlus.length,
 			row = playPlus.row,
 			column = playPlus.column,
 			self = this,
-			error = false;
+			error = false,
 			check = true;
-		// Check if play includes at least one letter already placed on board
-		if (countPlayPlus == countPlay && self.first == false) {
-				check = false;
-			}
+		if (row)
+			countPlayPlusRow = playPlus.row.length;
+		if (column)
+			countPlayPlusColumn = playPlus.column.length;
 		var submitWordHelper = function(rowOrColumn) {
+			// Check if play includes at least one letter already placed on board
+			if (rowOrColumn == row)
+				var countPlayPlus = countPlayPlusRow;
+			if (rowOrColumn == column)
+				var countPlayPlus = countPlayPlusColumn;
+			if (countPlayPlus == countPlay && self.first == false) {
+					check = false;
+			}
 			if (self.board.isInline(rowOrColumn) && check && self.board.isInSameRowOrColumn(play)) {
 				var word = self.board.boardToWord(rowOrColumn),
 					wordDict = stringToWord(word),
@@ -758,11 +832,22 @@ var Game = {
 				self.replenishHand(countPlay);
 				self.board.setPlay(play);
 				self.setPlayStyle(play);
-				$('#messages').text("Valid word: " + word)
-								.removeClass('error');
-				$('#scoreString').text("Word calculation: " + stringWordScore(wordDict));
+				$('#scoreString').text("Score calculation: " + stringWordScore(wordDict));
 				self.updateScore(score);
 				self.first = false;
+				var message = "Valid play: " + word;
+				if (playPlus.appendages.length > 0) {
+					var validWords = function() {
+						var appendages = ", ";
+						for (var i = 0; i < playPlus.appendages.length; i++) {
+							appendages += self.board.boardToWord(playPlus.appendages[i]) + ", ";
+						}
+						return appendages.slice(0, -2);
+					}
+					message += validWords();
+				}
+				$('#messages').text(message)
+					.removeClass('error');
 			}
 			else {
 				error = true;
@@ -770,13 +855,7 @@ var Game = {
 								.addClass('error');
 			}
 		}
-		if (row && column) {
-			submitWordHelper(row);
-			submitWordHelper(column);
-			if (!error)
-				$('#messages').text("Two valid words submitted");
-		}
-		else if (row)
+		if (row)
 			submitWordHelper(row);
 		else if (column)
 			submitWordHelper(column);
@@ -823,7 +902,7 @@ var Game = {
 		for (var i = 0; i < play.length; i++) {
 			var x = play[i][0];
 			var y = play[i][1];
-			$('#' + x + y).removeClass('placed-letter').removeClass('selected-letter');
+			$('#' + x + "-" + y).removeClass('placed-letter').removeClass('selected-letter');
 		}
 	},
 	updateScore: function(newPoints) {
