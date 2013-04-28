@@ -55,24 +55,18 @@ button {
 /*
 VARIANTS:
 Solitaire Scrabble- one player, timed
-Strategy Scrabble- two player, where they can see each others hand
 Clabbers- scrabble, but words played only have to be anagrams of real words
-
-Make findPlayPlus work with only one letter placed
+Strategy Scrabble- two player, where they can see each others hand
 
 How to call function as argument?
 Re-write findPlayPlus using function handler
 
 TEST LETTER PLACEMENT WELL!!
 
-Modify word calculation to display score of appendage words
-
-Make it a requirement that play includes at least one letter from already played letter
+Deselect old tile and select new tile upon click on different tile.
 
 lookup: how to prompt user input
 Blank letter
-
-isInDict (string is in word dictionary)
 
 Clean up unneeded functions
 Refactor
@@ -82,13 +76,15 @@ Place Hand using JQUERY?
 
 How do we access the empty Square objects we create when we create a Board? How do we define multiple variables within a loop? eval? Should we even use a Square object or just add the traits we need to the array?
 
-Deselect old tile and select new tile upon click on different tile.
-
 lookup: img of game board
 Board different special bonus positions
 
 effects
 images
+
+isInDict (string is in word dictionary)
+
+use ajax to load dictionary after board/hand
 
 BUGS:
 */
@@ -142,7 +138,7 @@ function stringWordScore(word) {
 	forEachIn(word, function(letter, count) {
 		scoreString += letter + ": " + LETTER_VALUES[letter] + "(" + count + ") + ";
 	});
-	return scoreString.slice(0, -2);
+	return scoreString.slice(0, -3);
 }
 
 function wordToString(word) {
@@ -200,11 +196,6 @@ function setNodeAttribute(node, attribute, value) {
     node.setAttribute(attribute, value);
 };
 
-function removeElement(node) {
-  if (node.parentNode)
-    node.parentNode.removeChild(node);
-};
-
 function dom(name, attributes) {
   var node = document.createElement(name);
   if (attributes) {
@@ -221,24 +212,10 @@ function dom(name, attributes) {
   return node;
 };
 
-function registerEventHandler(node, event, handler) {
-  if (typeof node.addEventListener == "function")
-    node.addEventListener(event, handler, false);
-  else
-    node.attachEvent("on" + event, handler);
+function removeElement(node) {
+  if (node.parentNode)
+    node.parentNode.removeChild(node);
 };
-
-function addHandler(node, type, handler) {
-  function wrapHandler(event) {
-    handler(window.event);
-  }
-  registerEventHandler(node, type, wrapHandler);
-  return {node: node, type: type, handler: wrapHandler};
-}
-
-function removeHandler(object) {
-  unregisterEventHandler(object.node, object.type, object.handler);
-}
 
 function method(object, name) {
   return function() {
@@ -511,7 +488,6 @@ var Board = {
 	// findPlayPlus start with the first tile from findPlay. Then scan the board from that first tile to determine the next in line. If there's a next one, add it to playPlus. If not, break. These tiles for which it scans can be locked or unlocked.
 	// From each new sequence in the loop, check left or right if it's a column, up or down if it's a row, to determine a possible new word. Add all those possible new array words to returned object as optional attributes
 	// Determine whether play is row or column. If it's a row, run row functions. Once completed, run column functions to determine appendages. Keep track of column appendages in object.appendages.
-	// As of now, you must play > 1 letters per play
 	findPlayPlus: function(play) {
 		var first = play[0],
 			row = [first],
@@ -560,7 +536,6 @@ var Board = {
 			column.unshift(columnBefore);
 			columnBefore = this.columnBeforePlay(column);
 		}
-		console.log(column);
 		if ((column.length > 1) && (matches(column, play) > 1)) {
 			for (var i = 0; i < column.length; i++) {
 				var appendage = [column[i]];
@@ -582,6 +557,16 @@ var Board = {
 			}
 			playPlus.column = column;
 			console.log(playPlus);
+			return playPlus;
+		}
+		// If the play is only one letter
+		if (play.length == 1) {
+			if (row.length > 1)
+				playPlus.row = row;
+			if (column.length > 1 && playPlus.row == null)
+				playPlus.column = column;
+			if (column.length > 1 && playPlus.row != null)
+				playPlus.appendages.push(column);
 			return playPlus;
 		}
 		return play;
@@ -640,6 +625,27 @@ var Board = {
 			var y = play[i][1];
 			this.board[y][x][0] = true;
 		}
+	},
+	// Given a playPlus object, count the number of unlocked tiles in that play given a Board
+	countUnlocked: function(playPlus) {
+		var count = 0;
+		if (playPlus.row) {
+			for (var i = 0; i < playPlus.row.length; i++) {
+				var x = playPlus.row[i][0];
+				var y = playPlus.row[i][1];
+				if (this.getLock(x, y) == false)
+					count += 1;
+			}
+		}
+		if (playPlus.column) {
+			for (var i = 0; i < playPlus.column.length; i++) {
+				var x = playPlus.column[i][0];
+				var y = playPlus.column[i][1];
+				if (this.getLock(x, y) == false)
+					count += 1;
+			}
+		}
+		return count;
 	},
 	// Takes array of arrays in the form [x, y]. Return string from letters placed on board.
 	boardToWord: function(play) {
@@ -802,6 +808,7 @@ var Game = {
 		var play = this.board.findPlay(),
 			countPlay = play.length,
 			playPlus = this.board.findPlayPlus(play),
+			countUnlockedPlayPlus = this.board.countUnlocked(playPlus);
 			row = playPlus.row,
 			column = playPlus.column,
 			self = this,
@@ -817,10 +824,16 @@ var Game = {
 				var countPlayPlus = countPlayPlusRow;
 			if (rowOrColumn == column)
 				var countPlayPlus = countPlayPlusColumn;
-			if (countPlayPlus == countPlay && self.first == false) {
+			if (countPlayPlus == countPlay && self.first == false && playPlus.appendages.length < 1) {
 					check = false;
 			}
-			if (self.board.isInline(rowOrColumn) && check && self.board.isInSameRowOrColumn(play)) {
+			console.log('self.board.isInline(rowOrColumn): ' + self.board.isInline(rowOrColumn));
+			console.log('check: ' + check);
+			console.log('self.board.isInSameRowOrColumn(play): ' + self.board.isInSameRowOrColumn(play));
+			console.log('countPlay: ' + countPlay);
+			console.log('countUnlockedPlayPlus: ' + countUnlockedPlayPlus);
+			console.log('countPlay <= countUnlockedPlayPlus: ' + countPlay <= countUnlockedPlayPlus);
+			if (self.board.isInline(rowOrColumn) && check && self.board.isInSameRowOrColumn(play) && countPlay <= countUnlockedPlayPlus) {
 				var word = self.board.boardToWord(rowOrColumn),
 					wordDict = stringToWord(word),
 					score = calculateWordScore(wordDict);
@@ -832,22 +845,32 @@ var Game = {
 				self.replenishHand(countPlay);
 				self.board.setPlay(play);
 				self.setPlayStyle(play);
-				$('#scoreString').text("Score calculation: " + stringWordScore(wordDict));
-				self.updateScore(score);
 				self.first = false;
 				var message = "Valid play: " + word;
+				var stringScore = "Score calculation: " + stringWordScore(wordDict);
 				if (playPlus.appendages.length > 0) {
 					var validWords = function() {
-						var appendages = ", ";
+						var message = ", ";
+						var stringScore = ", ";
+						var newScore = 0;
 						for (var i = 0; i < playPlus.appendages.length; i++) {
-							appendages += self.board.boardToWord(playPlus.appendages[i]) + ", ";
+							message += self.board.boardToWord(playPlus.appendages[i]) + ", ";
+							stringScore += stringWordScore(stringToWord(self.board.boardToWord(playPlus.appendages[i]))) + ", ";
+							newScore += calculateWordScore(stringToWord(self.board.boardToWord(playPlus.appendages[i])));
+							console.log(newScore);
+							console.log(self.board.boardToWord(playPlus.appendages[i]))
 						}
-						return appendages.slice(0, -2);
+						return {message: message.slice(0, -2), stringScore: stringScore.slice(0, -2), newScore: newScore};
 					}
-					message += validWords();
+					validWords = validWords();
+					score += validWords.newScore;
+					message += validWords.message;
+					stringScore += validWords.stringScore;
 				}
+				self.updateScore(score);
 				$('#messages').text(message)
 					.removeClass('error');
+				$('#scoreString').text(stringScore);
 			}
 			else {
 				error = true;
@@ -877,7 +900,7 @@ var Game = {
 		for (var i = 0; i < play.length; i++) {
 			var letter = this.board.valueAt(play[i][0], play[i][1]);
 			this.board.removeLetter(play[i][0], play[i][1]);
-			$('#' + play[i][0] + play[i][1]).text(" ").addClass('empty');
+			$('#' + play[i][0] + "-" + play[i][1]).text(" ").addClass('empty');
 			this.hand.addLetter(letter);
 			var $space = $('.empty-hand')
 										.first()
