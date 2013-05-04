@@ -58,8 +58,6 @@ Solitaire Scrabble- one player, timed
 Clabbers- scrabble, but words played only have to be anagrams of real words
 Strategy Scrabble- two player, where they can see each others hand
 
-using HTML attributes- data?
-
 lookup: img of game board
 Board different special bonus positions
 
@@ -68,6 +66,7 @@ Score calculation currently counts single letter twice if letter is in two words
 
 effects
 images
+layout
 
 isInDict (string is in word dictionary)
 
@@ -682,6 +681,44 @@ var Board = {
 		}
 		return count;
 	},
+	// Creates array of square locations from playPlus object
+	playPlusArray: function(play) {
+		var playArray = [];
+		if (play.row) {
+			$.each(play.row, function(i, element) {
+				playArray.push(play.row[i]);
+			});
+		}
+		if (play.column) {
+			$.each(play.column, function(i, element) {
+				playArray.push(play.column[i]);
+			});
+		}
+		if (play.appendages) {
+			$.each(play.appendages, function(i, element) {
+				for (var j = 0; j < play.appendages[i].length; j++) {
+					playArray.push(play.appendages[i][j]);
+				}
+			});
+		}
+		return playArray;
+	},
+	removeDuplicatesInArray: function(play) {
+		var uniqueArray = [];
+		$.each(play, function(i, element) {
+			if ($.inArray(element, uniqueArray) === -1)
+				uniqueArray.push(element);
+		});
+		return uniqueArray;
+	},
+	scorePlay: function(play) {
+		var score = 0,
+			self = this;
+		$.each(play, function(i, element) {
+			score += LETTER_VALUES[self.valueAt(element[0], element[1])];
+		});
+		return score;
+	},
 	// Takes array of arrays in the form [x, y]. Return string from letters placed on board.
 	boardToWord: function(play) {
 		word = "";
@@ -843,12 +880,15 @@ var Game = {
 		var play = this.board.findPlay(),
 			countPlay = play.length,
 			playPlus = this.board.findPlayPlus(play),
-			countUnlockedPlayPlus = this.board.countUnlocked(playPlus);
+			playPlusArray = this.board.playPlusArray(playPlus),
+			playPlusWithoutDuplicates = this.board.removeDuplicatesInArray(playPlusArray),
+			score = this.board.scorePlay(playPlusWithoutDuplicates),
+			countUnlockedPlayPlus = this.board.countUnlocked(playPlus),
 			row = playPlus.row,
 			column = playPlus.column,
 			self = this,
 			error = false,
-			blank = false;
+			blank = false,
 			check = true;
 		if (row)
 			countPlayPlusRow = playPlus.row.length;
@@ -869,9 +909,10 @@ var Game = {
 			console.log('countPlay: ' + countPlay);
 			console.log('countUnlockedPlayPlus: ' + countUnlockedPlayPlus);
 			console.log('countPlay <= countUnlockedPlayPlus: ' + countPlay <= countUnlockedPlayPlus);
-			var word = self.board.boardToWord(rowOrColumn),
-				wordDict = stringToWord(word),
-				score = calculateWordScore(wordDict);
+			console.log(playPlus);
+			console.log(self.board.playPlusArray(playPlus));
+			console.log(self.board.removeDuplicatesInArray(self.board.playPlusArray(playPlus)));
+			var word = self.board.boardToWord(rowOrColumn);
 			if (word.contains("*")) {
 				var blankLetter = prompt("Enter letter for blank (*) tile");
 				blank = true;
@@ -890,8 +931,6 @@ var Game = {
 					}
 				});
 				word = self.board.boardToWord(rowOrColumn);
-				wordDict = stringToWord(word);
-				score = calculateWordScore(wordDict);
 			}
 			if (self.board.isInline(rowOrColumn) && check && self.board.isInSameRowOrColumn(play) && countPlay <= countUnlockedPlayPlus && !(word.contains('*'))) {
 				self.letterEvent = null;
@@ -899,26 +938,13 @@ var Game = {
 				self.board.setPlay(play);
 				self.setPlayStyle(play);
 				self.first = false;
+				var playPlusArray = self.board.removeDuplicatesInArray(self.board.playPlusArray(playPlus));
 				var message = "Valid play: " + word;
-				var stringScore = "Score calculation: " + stringWordScore(wordDict);
+				var stringScore = "Score calculation: ";
 				if (playPlus.appendages.length > 0) {
-					var validWords = function() {
-						var message = ", ";
-						var stringScore = ", ";
-						var newScore = 0;
-						for (var i = 0; i < playPlus.appendages.length; i++) {
-							message += self.board.boardToWord(playPlus.appendages[i]) + ", ";
-							stringScore += stringWordScore(stringToWord(self.board.boardToWord(playPlus.appendages[i]))) + ", ";
-							newScore += calculateWordScore(stringToWord(self.board.boardToWord(playPlus.appendages[i])));
-							console.log(newScore);
-							console.log(self.board.boardToWord(playPlus.appendages[i]))
-						}
-						return {message: message.slice(0, -2), stringScore: stringScore.slice(0, -2), newScore: newScore};
+					for (var i = 0; i < playPlus.appendages.length; i++) {
+						message += ", " + self.board.boardToWord(playPlus.appendages[i]);
 					}
-					validWords = validWords();
-					score += validWords.newScore;
-					message += validWords.message;
-					stringScore += validWords.stringScore;
 				}
 				self.updateScore(score);
 				$('#messages').text(message)
