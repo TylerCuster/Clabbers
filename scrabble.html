@@ -78,8 +78,6 @@ Solitaire Scrabble- one player, timed
 Clabbers- scrabble, but words played only have to be anagrams of real words
 Strategy Scrabble- two player, where they can see each others hand
 
-fix bug in playPlus.appendages ??
-
 layout
 
 anagrams:
@@ -674,6 +672,7 @@ var Board = {
 							columnBefore = this.columnBeforePlay(appendage);
 						}
 						if (appendage.length > 1) {
+							console.log(appendage);
 							playPlus.appendages.push(appendage);
 						}
 				}
@@ -764,25 +763,6 @@ var Board = {
 			return [firstInColumn[0], firstInColumn[1]-1];
 		else
 			return null;
-	},
-	playPlusWithoutRepeatingWord: function(playPlus) {
-		var playPlusCopy = playPlus;
-		if (playPlus.row) {
-			var rowOrColumn = playPlus.row;
-		}
-		else {
-			var rowOrColumn = playPlus.column;
-		}
-		$.each(playPlus.appendages, function(i, element) {
-			var repeats = matchesArray(rowOrColumn, element);
-			console.log(repeats);
-			$.each(repeats, function(j, elementRepeats) {
-				playPlusCopy.appendages[i].splice(playPlus.appendages[i].indexOf(elementRepeats), 1);
-			});
-		});
-		console.log("playpluscopy: ")
-		console.log(playPlusCopy);
-		return playPlusCopy;
 	},
 	// Scans board for letters with a lock of false to determine the play
 	findPlay: function() {
@@ -880,6 +860,8 @@ var Board = {
 			row = playPlus.row,
 			column = playPlus.column,
 			appendages = playPlus.appendages;
+		console.log('score appendages');
+		console.log(appendages);
 		if (row) {
 			score += self.scorePlay(row);
 			console.log('row score: ' + self.scorePlay(row));
@@ -890,24 +872,7 @@ var Board = {
 		}
 		if (appendages.length > 0) {
 			$.each(appendages, function(i, element) {
-				var elementArr = element;
-				if (row) {
-					var repeats = matchesArray(row, appendages[i]);
-					$.each(row, function(i, element) {
-						elementArr.push(element);
-					});
-				}
-				if (column) {
-					var repeats = matchesArray(column, appendages[i]);
-					$.each(column, function(i, element) {
-						elementArr.push(element);
-					});
-				}
-				console.log(elementArr);
-				var elementWithoutDuplicates = removeDuplicatePairsInArray(elementArr);
-				console.log(elementWithoutDuplicates);
-				score += self.scorePlay(elementWithoutDuplicates);
-				console.log('appendage score: ' + self.scorePlay(elementWithoutDuplicates));
+				score += self.scorePlay(appendages[i]);
 			});
 		}
 		console.log('total score: ' + score);
@@ -1134,17 +1099,18 @@ var Game = {
 		var play = this.board.findPlay(),
 			countPlay = play.length,
 			playPlus = this.board.findPlayPlus(play),
-			playPlus = this.board.playPlusWithoutRepeatingWord(playPlus),
 			playPlusArray = this.board.playPlusArray(playPlus),
 			playPlusWithoutDuplicates = removeDuplicatesInArray(playPlusArray),
 			score = this.board.scorePlayPlus(playPlus),
 			countUnlockedPlayPlus = this.board.countUnlocked(playPlus),
 			row = playPlus.row,
 			column = playPlus.column,
+			appendages = playPlus.appendages,
 			self = this,
 			error = false,
 			blank = false,
 			check = true;
+		console.log(playPlus);
 		if (row)
 			countPlayPlusRow = playPlus.row.length;
 		if (column)
@@ -1187,14 +1153,13 @@ var Game = {
 				
 				var playPlusAppendages = function(playPlus) {
 					var message = [];
-					if (playPlus.appendages.length > 0) {
-						$.each(playPlus.appendages, function( i, element ) {
+					if (appendages.length > 0) {
+						$.each(appendages, function( i, element ) {
 							message.push(self.board.boardToWord(element));
 						});
 					}
 					return message;
 				}
-				
 				self.updateScore(score);
 				var message = "Valid play: " + word,
 					playPlusAppendagesArray = playPlusAppendages(playPlus);
