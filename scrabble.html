@@ -80,10 +80,9 @@ Strategy Scrabble- two player, where they can see each others hand
 
 layout
 
-anagrams:
-enter intended anagram. then only need to check if that's an anagram of letters on board, and search dictionary. needs to check for each word played per play
-
 inDict (string is in word dictionary)
+
+add inDict to submitWord
 
 use ajax to load dictionary after board/hand
 
@@ -991,8 +990,8 @@ var Game = {
 		$('<button id="submitWord">Submit word</button>').appendTo(this.place);
 		$('#submitWord').on('click', method(this, 'submitWord'));
 
-		$('<div id="messages">&nbsp;</div>').appendTo(this.place);
 		$('<div id="score">&nbsp;</div>').appendTo(this.place);
+		$('<div id="messages">&nbsp;</div>').appendTo(this.place);
 		$('<div id="scoreString">&nbsp;</div>').appendTo(this.place);
 		
 		var self = this;
@@ -1167,34 +1166,24 @@ var Game = {
 				anagramsCheck = false;
 				$.each(wordList, function( i, element ) {
 					var anagramWord = prompt("Enter intended dictionary word for " + String(element) + ": ");
-					anagramWords.push(anagramWord);
+					anagramWords.push( anagramWord );
 				});
 				
-				console.log("anagramWords");
-				console.log(anagramWords);
-			
-				var validAnagrams = function(anagramWords) {
+				var validAnagrams = function( anagramWords ) {
+					var check = true;
 					$.each(anagramWords, function( i, element ) {
 						console.log(wordList[i] + ": " + element);
 						console.log(anagram( wordList[i], element ));
 						if ((anagram( wordList[i], element )) == false) {
-							console.log("FALSE DAMNIT!");
-							return false;
+							check = false;
 						}
 					});
-					return true;
+					return check;
 				}
 				
-				console.log("validAnagrams(anagramWords)");
-				console.log(validAnagrams(anagramWords));
-				
-				if (validAnagrams(anagramWords)) {
+				if (validAnagrams( anagramWords ) == true) {
 					anagramsCheck = true;
 				}
-				else {
-					
-				}
-				
 			}			
 			
 			if (self.board.isInline(rowOrColumn) && check && self.board.isInSameRowOrColumn(play) && countPlay <= countUnlockedPlayPlus && !(word.contains('*')) && anagramsCheck) {
@@ -1202,8 +1191,7 @@ var Game = {
 				self.replenishHand(countPlay);
 				self.setPlayStyle(play);
 				self.first = false;
-				
-				
+			
 				self.updateScore(score);
 				var message = "Valid play: " + word,
 					playPlusAppendagesArray = playPlusAppendages(playPlus);
@@ -1212,8 +1200,9 @@ var Game = {
 
 				$('#messages').text(message)
 					.removeClass('error');
-				//var playPlusArray = removeDuplicatesInArray(self.board.playPlusArray(playPlus));
-				var obj = $('#scoreString').text(self.board.scorePlayPlusString(playPlus));
+				var scoreString = "Play score: " + score + "\n";
+				scoreString += self.board.scorePlayPlusString(playPlus)
+				var obj = $('#scoreString').text(scoreString);
 				obj.html(obj.html().replace(/\n/g,'<br/>'));
 				self.board.deactivateBoardSpecials(playPlusWithoutDuplicates);
 				self.board.setPlay(play);
@@ -1222,6 +1211,7 @@ var Game = {
 				error = true;
 				$('#messages').text("Invalid word")
 								.addClass('error');
+				$('#scoreString').text("");
 			}
 		}
 		if (row)
@@ -1285,7 +1275,7 @@ var Game = {
 	},
 	updateScore: function(newPoints) {
 		this.score += newPoints;
-		$('#score').text("Word score: " + newPoints + ", Total score: " + this.score);
+		$('#score').text("Total score: " + this.score);
 	}
 };
 
