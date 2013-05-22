@@ -125,6 +125,8 @@ var LETTER_COUNTS = {"A": 9, "B": 2, "C": 2, "D": 4, "E": 12, "F": 2, "G": 3, "H
 
 var LETTER_VOWELS = ["A", "E", "I", "O", "U"];
 
+var anagramsOn = true;
+
 var boardSpecials = [
 	['TW', 'empty', 'empty', 'DL', 'empty', 'empty', 'empty', 'TW', 'empty', 'empty', 'empty', 'DL', 'empty', 'empty', 'TW'],
 	['empty', 'DW', 'empty', 'empty', 'empty', 'TL', 'empty', 'empty', 'empty', 'TL', 'empty', 'empty', 'empty', 'DW', 'empty'],
@@ -1145,21 +1147,63 @@ var Game = {
 				});
 				word = self.board.boardToWord(rowOrColumn);
 			}
-			if (self.board.isInline(rowOrColumn) && check && self.board.isInSameRowOrColumn(play) && countPlay <= countUnlockedPlayPlus && !(word.contains('*'))) {
+			
+			var playPlusAppendages = function(playPlus) {
+				var appendageWords = [],
+					appendages = playPlus.appendages;
+				if (appendages.length > 0) {
+					$.each(appendages, function( i, element ) {
+						appendageWords.push(self.board.boardToWord(element));
+					});
+				}
+				return appendageWords;
+			}
+			
+			var anagramsCheck = true;
+			if (anagramsOn) {
+				var wordList = playPlusAppendages(playPlus);
+				wordList.unshift(word);
+				var anagramWords = [];
+				anagramsCheck = false;
+				$.each(wordList, function( i, element ) {
+					var anagramWord = prompt("Enter intended dictionary word for " + String(element) + ": ");
+					anagramWords.push(anagramWord);
+				});
+				
+				console.log("anagramWords");
+				console.log(anagramWords);
+			
+				var validAnagrams = function(anagramWords) {
+					$.each(anagramWords, function( i, element ) {
+						console.log(wordList[i] + ": " + element);
+						console.log(anagram( wordList[i], element ));
+						if ((anagram( wordList[i], element )) == false) {
+							console.log("FALSE DAMNIT!");
+							return false;
+						}
+					});
+					return true;
+				}
+				
+				console.log("validAnagrams(anagramWords)");
+				console.log(validAnagrams(anagramWords));
+				
+				if (validAnagrams(anagramWords)) {
+					anagramsCheck = true;
+				}
+				else {
+					
+				}
+				
+			}			
+			
+			if (self.board.isInline(rowOrColumn) && check && self.board.isInSameRowOrColumn(play) && countPlay <= countUnlockedPlayPlus && !(word.contains('*')) && anagramsCheck) {
 				self.letterEvent = null;
 				self.replenishHand(countPlay);
 				self.setPlayStyle(play);
 				self.first = false;
 				
-				var playPlusAppendages = function(playPlus) {
-					var message = [];
-					if (appendages.length > 0) {
-						$.each(appendages, function( i, element ) {
-							message.push(self.board.boardToWord(element));
-						});
-					}
-					return message;
-				}
+				
 				self.updateScore(score);
 				var message = "Valid play: " + word,
 					playPlusAppendagesArray = playPlusAppendages(playPlus);
