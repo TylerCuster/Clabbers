@@ -1,7 +1,13 @@
 <html>
 <style>
+body {
+	font-family: sans-serif;
+	margin: 0 7%;
+	min-width: 20em;
+	max-width: 90em;
+}
 button {
-	margin: 5px;
+	margin-right: 5px;
 }
 .empty-hand {
 }
@@ -32,8 +38,16 @@ button {
 .selected-letter {
 	background-color: red;
 }
+#header {
+	clear: right;
+	height: 1em;
+	padding: 1em; 
+	width: 100%;
+	font-size: 35px;
+}
 #board {
-	position: relative;
+	float: left;
+	margin-right: 50px;
 	width: 850px;
 }
 #board td{
@@ -42,9 +56,8 @@ button {
 	text-align: center;
 	font-size: 35px;
 }
-.sidebar {
-	position: relative;
-	align: right;
+#sidebar {
+	width: 200px;
 	width: 30%;
 }
 #hand {
@@ -170,18 +183,6 @@ function matches(array1, array2) {
 // True if array a of length 2 is equal to array b of length 2
 function equalArrayOfLengthTwo(a, b) {
 	return a[0] == b[0] && a[1] == b[1];
-}
-
-// Returns matches between array1, array2
-function matchesArray(array1, array2) {
-	matchesArr = [];
-	for (var i = 0; i < array1.length; i++) {
-		for (var j = 0; j <array2.length; j++) {
-			if (array1[i][0] == array2[j][0] && array1[i][1] == array2[j][1])
-				matchesArr.push(array1[i]);
-		}
-	}
-	return matchesArr;
 }
 
 function removeDuplicatesInArray(play) {
@@ -976,6 +977,8 @@ var Game = {
 		
 		this.initial();
 		
+		$('<div id="header">CLABBERS</div>').prependTo(this.place);
+		
 		$('<button id="newGame">New game</button>').appendTo(this.place);
 		$('#newGame').on('click', function() {
 			location.reload();
@@ -1166,6 +1169,7 @@ var Game = {
 				anagramsCheck = false;
 				$.each(wordList, function( i, element ) {
 					var anagramWord = prompt("Enter intended dictionary word for " + String(element) + ": ");
+					anagramWord = anagramWord.toUpperCase();
 					anagramWords.push( anagramWord );
 				});
 				
