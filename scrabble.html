@@ -30,7 +30,7 @@ button {
 	background-color: grey;
 }
 .start {
-	background-color: grey;
+	background-color: pink;
 }
 .placed-letter {
 	background-color: green;
@@ -94,12 +94,11 @@ Strategy Scrabble- two player, where they can see each others hand
 layout
 
 inDict (string is in word dictionary)
-
 add inDict to submitWord
 
 use ajax to load dictionary after board/hand
 
-Deselect old tile and select new tile upon click on different tile.
+Deselect old tile and select new tile upon click of different tile.
 
 effects
 images
@@ -122,6 +121,7 @@ bug reporting e-mail
 
 BUGS:
 TypeError when submitWord is called with no letters played on board
+Non-fatal error when placing two tiles not touching each other
  -->
 <script src="jquery-1.9.1.js"></script>
 <script type="text/javascript">
@@ -180,69 +180,8 @@ function matches(array1, array2) {
 	return count;
 }
 
-// True if array a of length 2 is equal to array b of length 2
 function equalArrayOfLengthTwo(a, b) {
 	return a[0] == b[0] && a[1] == b[1];
-}
-
-function removeDuplicatesInArray(play) {
-	var uniqueArray = [];
-	$.each(play, function(i, elementPlay) {
-		var count = 0;
-		$.each(uniqueArray, function(j, elementUnique) {
-			if (equalArrayOfLengthTwo(elementPlay, elementUnique) == false)
-				count += 1;
-		});
-		if (count == uniqueArray.length)
-			uniqueArray.push(elementPlay);
-	});
-	return uniqueArray;
-}
-
-/*
-function XremoveDuplicatesInArray(play) {
-	$.grep(play, function(i, element1) {
-		$.each(play, function (j, element2) {
-			$.each(play, function(k, element3) {
-				if (element2 == element3)
-					return "ok";
-			};
-		});
-	});
-}
-*/
-
-function undef(arr) {
-	var newArray = [];
-	$.each(arr, function(i, element) {
-		if (element != undefined)
-			newArray.push(element);
-	});
-	return newArray;
-}
-
-// Removes matches from array. If there are 3 identical matches, removes 2 of them
-function removeDuplicatePairsInArray(play) {
-	var uniqueArray = [];
-	$.each(play, function(i, elementPlay) {
-		var count = 0;
-		var check = true;
-		$.each(uniqueArray, function(j, elementUnique) {
-			if (equalArrayOfLengthTwo(elementPlay, elementUnique) == false) {
-				count += 1;
-			}
-			else {
-				console.log(uniqueArray[j]);
-				delete uniqueArray[j];
-				uniqueArray = undef(uniqueArray);
-				check = false;
-			}
-		});
-		if (count == uniqueArray.length && check) {
-			uniqueArray.push(elementPlay);
-		}
-	});
-	return uniqueArray;
 }
 
 function randomInteger(below) {
@@ -301,17 +240,6 @@ function wordToString(word) {
 		};
 	});
 	return stringWord;
-}
-
-function stringToWord(word) {
-	var wordDict = Dictionary.create();
-	for (var i = 0; i < word.length; i++) {
-		if (wordDict.contains(word[i]) == false) 
-			wordDict.store(word[i], 1);
-		else
-			wordDict.store(word[i], wordDict.lookup(word[i])+1);
-	}
-	return wordDict.values;
 }
 
 function clone(object) {
@@ -1104,7 +1032,6 @@ var Game = {
 			countPlay = play.length,
 			playPlus = this.board.findPlayPlus(play),
 			playPlusArray = this.board.playPlusArray(playPlus),
-			playPlusWithoutDuplicates = removeDuplicatesInArray(playPlusArray),
 			score = this.board.scorePlayPlus(playPlus),
 			countUnlockedPlayPlus = this.board.countUnlocked(playPlus),
 			row = playPlus.row,
@@ -1176,8 +1103,6 @@ var Game = {
 				var validAnagrams = function( anagramWords ) {
 					var check = true;
 					$.each(anagramWords, function( i, element ) {
-						console.log(wordList[i] + ": " + element);
-						console.log(anagram( wordList[i], element ));
 						if ((anagram( wordList[i], element )) == false) {
 							check = false;
 						}
@@ -1190,7 +1115,24 @@ var Game = {
 				}
 			}			
 			
-			if (self.board.isInline(rowOrColumn) && check && self.board.isInSameRowOrColumn(play) && countPlay <= countUnlockedPlayPlus && !(word.contains('*')) && anagramsCheck) {
+			var checkStart = function ( playPlusArray ) {
+				var check = false;
+				$.each( playPlusArray, function ( i, element ) {
+					if (equalArrayOfLengthTwo( element, [7,7] )) {
+						check = true;
+					}
+				});
+				return check;
+			}
+			
+			var start = true;
+			if (self.first) {
+				if (checkStart( playPlusArray ) == false) {
+					start = false;
+				}
+			}
+			
+			if (self.board.isInline(rowOrColumn) && check && self.board.isInSameRowOrColumn(play) && countPlay <= countUnlockedPlayPlus && !(word.contains('*')) && anagramsCheck && start) {
 				self.letterEvent = null;
 				self.replenishHand(countPlay);
 				self.setPlayStyle(play);
@@ -1208,7 +1150,7 @@ var Game = {
 				scoreString += self.board.scorePlayPlusString(playPlus)
 				var obj = $('#scoreString').text(scoreString);
 				obj.html(obj.html().replace(/\n/g,'<br/>'));
-				self.board.deactivateBoardSpecials(playPlusWithoutDuplicates);
+				self.board.deactivateBoardSpecials(playPlusArray);
 				self.board.setPlay(play);
 			}
 			else {
