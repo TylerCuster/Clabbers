@@ -94,16 +94,20 @@ Strategy Scrabble- two player, where they can see each others hand
 
 layout
 
-Deselect old tile and select new tile upon click of different tile.
+display board specials
 
+load dictionary
 inDict (string is in word dictionary)
 add inDict to submitWord
 
-use ajax to load dictionary after board/hand
+Blank letter scoring
 
 effects
 images
-display board specials
+
+Deselect old tile and select new tile upon click of different tile.
+
+use ajax to load dictionary after board/hand
 
 Clean up unneeded functions
 Refactor
@@ -1008,6 +1012,9 @@ var Game = {
 				else if ((!self.letterEvent) && (self.board.getLock(square[0], square[1]) == false)) {
 					self.letterEvent = [$this.text(), $this.attr("id")];
 					$this.addClass("selected-letter");
+				}
+				else if (self.letterEvent && (self.board.getLock(square[0], square[1]) == false)) {
+					
 				}
 				else if (self.letterEvent && $this.text() == self.letterEvent[0]) {
 					self.deselectHandler(self.letterEvent);
