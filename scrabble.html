@@ -99,10 +99,6 @@ load dictionary
 inDict (string is in word dictionary)
 add inDict to submitWord
 
-background specials images
-
-specials coloring is removed after letter is 'returned' to hand
-
 layout
 effects
 
@@ -167,6 +163,25 @@ var boardSpecialsText = [
 	['   ', 'DW', '   ', '   ', '   ', 'TL', '   ', '   ', '   ', 'TL', '   ', '   ', '   ', 'DW', '   '],
 	['TW', '   ', '   ', 'DL', '   ', '   ', '   ', 'TW', '   ', '   ', '   ', 'DL', '   ', '   ', 'TW']
 ];
+/*
+var boardSpecialsText = [
+	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
+	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
+	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
+	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
+	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
+	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
+	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
+	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
+	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
+	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
+	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
+	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
+	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
+	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
+	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
+];
+*/
 
 var boardSpecials = [
 	['TW', 'empty', 'empty', 'DL', 'empty', 'empty', 'empty', 'TW', 'empty', 'empty', 'empty', 'DL', 'empty', 'empty', 'TW'],
@@ -1168,14 +1183,16 @@ var Game = {
 			
 				self.updateScore(score);
 				var message = "Valid play: " + word,
-					playPlusAppendagesArray = playPlusAppendages(playPlus);
+					playPlusAppendagesArray = playPlusAppendages(playPlus);				
 				if (playPlusAppendagesArray.length > 0)
 					message += ", " + playPlusAppendagesArray.join(", ");
-
+				
+				message += ": " + anagramWords.join(", ");
+				
 				$('#messages').text(message)
 					.removeClass('error');
-				var obj = $('#scoreString').text(scoreString);
-				obj.html(obj.html().replace(/\n/g,'<br/>'));
+				var sString = $('#scoreString').text(scoreString);
+				sString.html(sString.html().replace(/\n/g,'<br/>'));
 				self.board.deactivateBoardSpecials(playPlusArray);
 				self.board.setPlay(play);
 			}
@@ -1211,11 +1228,14 @@ var Game = {
 		for (var i = 0; i < play.length; i++) {
 			var letter = this.board.valueAt(play[i][0], play[i][1]);
 			this.board.removeLetter(play[i][0], play[i][1]);
+			var boardSpecialsTxt = boardSpecialsText[play[i][0]][play[i][1]];
+			var boardSpecialsClass = String(boardSpecials[play[i][0]][play[i][1]]);
 			var $square = $('#' + play[i][0] + "-" + play[i][1])
-				.text(" ")
-				.addClass('empty')
+				.text(boardSpecialsTxt)
+				.addClass(boardSpecialsClass)
 				.removeClass('placed-letter')
 				.removeClass('selected-letter');
+			console.log(boardSpecialsClass);
 			this.board.setLock(play[i][0], play[i][1]);
 			this.hand.addLetter(letter);
 			var $space = $('.empty-hand')
@@ -1223,7 +1243,7 @@ var Game = {
 										.text(letter)
 										.removeClass('empty-hand');
 		}
-		this.setPlayStyle(play);
+		//this.setPlayStyle(play);
 	},	
 	replenishHand: function(count) {
 		for (var i = 0; i < count; i++) {
