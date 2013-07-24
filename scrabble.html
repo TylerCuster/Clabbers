@@ -90,21 +90,13 @@ button {
 <!--
 
 test
-VARIANTS:
-Solitaire Scrabble- one player, timed
-Clabbers- scrabble, but words played only have to be anagrams of real words
-Strategy Scrabble- two player, where they can see each others hand
-
-load dictionary
-inDict (string is in word dictionary)
-add inDict to submitWord
 
 layout
 effects
 
-Scrabble/Clabbers prompt at beginning
-
 Deselect old tile and select new tile upon click of different tile.
+
+write up error conditions
 
 ajax tutorial
 use ajax to load dictionary after board/hand
@@ -129,7 +121,9 @@ TypeError when submitWord is called with no letters played on board
 Non-fatal error when placing two tiles not touching each other
  -->
 <script src="jquery-1.9.1.js"></script>
+<script src="ospd.js"></script>
 <script type="text/javascript">
+
 $(document).ready(function() {
 
 var HAND_SIZE = 7;
@@ -141,8 +135,6 @@ var LETTER_VALUES = {"A": 1, "B": 3, "C": 3, "D": 2, "E": 1, "F": 4, "G": 2, "H"
 var LETTER_COUNTS = {"A": 9, "B": 2, "C": 2, "D": 4, "E": 12, "F": 2, "G": 3, "H": 2, "I": 9, "J": 1, "K": 1, "L": 4, "M": 2, "N": 6, "O": 8, "P": 2, "Q": 1, "R": 6, "S": 4, "T": 6, "U": 4, "V": 2, "W": 2, "X": 1, "Y": 2, "Z": 1, "*": 2};
 
 var LETTER_VOWELS = ["A", "E", "I", "O", "U"];
-
-// scrabble/clabbers buttons
 
 var anagramsOn = true;
 
@@ -256,6 +248,11 @@ function anagram(string1, string2) {
 	else {
 		return false;
 	}
+}
+
+// Returns position in scrabbleDictionaryList if word is in dictionary, -1 otherwise
+function dictionary(word) {
+	return $.inArray(word, scrabbleDictionaryList);
 }
 
 function forEachIn(object, action) {
@@ -942,7 +939,7 @@ var Game = {
 		this.score = 0;
 		this.letterEvent = null;
 		
-		$('<div id="header">CLABBERS</div>').appendTo(this.place);
+		$('<div id="header">CLABBERS, <font size="3"> an anagram variant of Scrabble</font></div>').appendTo(this.place);
 		
 		this.initial();
 		
@@ -1138,7 +1135,7 @@ var Game = {
 				var anagramWords = [];
 				anagramsCheck = false;
 				$.each(wordList, function( i, element ) {
-					var anagramWord = prompt("Enter intended dictionary word for " + String(element) + ": ");
+					var anagramWord = prompt("Enter intended dictionary word for the anagram " + String(element) + ": ");
 					anagramWord = anagramWord.toUpperCase();
 					anagramWords.push( anagramWord );
 				});
@@ -1148,6 +1145,13 @@ var Game = {
 					$.each(anagramWords, function( i, element ) {
 						if ((anagram( wordList[i], element )) == false) {
 							check = false;
+						}
+						var elementLowerCase = element.toLowerCase();
+						if (dictionary( elementLowerCase ) == -1) {
+							check = false;
+							console.log(elementLowerCase);
+							console.log(dictionary(elementLowerCase));
+							console.log("dictionary fail");
 						}
 					});
 					return check;
