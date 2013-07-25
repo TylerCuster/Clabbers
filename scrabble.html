@@ -3,41 +3,9 @@
 body {
 	font-family: sans-serif;
 	font-size: 2em;
-	margin: 0 7%;
+	margin: 0 5%;
 	min-width: 20em;
 	max-width: 90em;
-}
-button {
-	margin-right: 5px;
-}
-.empty-hand {
-}
-.error {
-	color: red;
-}
-.empty {
-	background-color: grey;
-}
-.TW {
-	background-color: blue;
-}
-.DW {
-	background-color: purple;
-}
-.TL {
-	background-color: yellow;
-}
-.DL {
-	background-color: brown;
-}
-.start {
-	background-color: pink;
-}
-.placed-letter {
-	background-color: green;
-}
-.selected-letter {
-	background-color: red;
 }
 #header {
 	clear: right;
@@ -49,14 +17,14 @@ button {
 #board {
 	float: left;
 	margin-right: 50px;
-	width: 850px;
+	/*width: 750px;*/
 }
 #board td{
-	width: 45px;
-	height: 45px;
+	font-size: 10px;
+	color: grey;
+	width: 50px;
+	height: 50px;
 	text-align: center;
-	font-size: 30px;
-	border: 1;
 }
 #sidebar {
 	width: 200px;
@@ -65,11 +33,12 @@ button {
 #hand {
 	position: relative;
 	margin-top: 10px;
-	margin-bottom: 10px;	
+	margin-bottom: 10px;
+	/*width: 358px;*/
 }
 #hand td{
-	width: 45px;
-	height: 45px;
+	width: 50px;
+	height: 50px;
 	text-align: center;
 	font-size: 30px;
 }
@@ -85,6 +54,66 @@ button {
 	margin: 10px;
 	font-weight: bold;
 }
+button {
+	margin-right: 5px;
+}
+td.empty-hand {
+	background-color: grey;
+	width: 52px;
+	height: 52px;
+}
+.error {
+	color: red;
+}
+.empty {
+	background-color: grey;
+}
+.TW {
+	background-color: #BC8F8F;
+}
+.DW {
+	background-color: #CFAFAF;
+}
+.TL {
+	background-color: #E2CFCF;
+}
+.DL {
+	background-color: #F5EFEF;
+}
+.start {
+	background-color: pink;
+}
+#board td:hover {
+	background-color: orange;	
+}
+#hand td:hover {
+	background-color: orange;	
+}
+#board td.placed-letter {
+	background-color: green;
+}
+#hand td.selected-letter {
+	background-color: red;
+}
+#board td.selected-letter {
+	background-color: red;
+}
+#board td.played-letter {
+	background-color: white;
+}
+#board td.placed-letter {
+	font-size: 30px;
+	color: black;
+}
+#board td.selected-letter {
+	font-size: 30px;
+	color: black;
+}
+#board td.played-letter {
+	font-size: 30px;
+	color: black;
+}
+
 </style>
 <body>
 <!--
@@ -93,6 +122,9 @@ test
 
 layout
 effects
+
+Can't de-select tile placed on board
+Deletes specials text when tile moved from spot on board
 
 Deselect old tile and select new tile upon click of different tile.
 
@@ -402,7 +434,7 @@ var Hand = Dictionary.extend({
 			tableRow.appendChild(tableCell);
 		};
 		
-		this.table = dom("TABLE", {"id": "hand", "border": "1"}, tbody);
+		this.table = dom("TABLE", {"id": "hand", "border": "1px"}, tbody);
 	},
 	isValidHand: function(word) {
 		copy = this.createArray();
@@ -521,7 +553,7 @@ var Board = {
 			tbody.appendChild(tableRow);
 			this.board.push(row);
 		}
-		this.table = dom("TABLE", {"id": "board", "border": "1"}, tbody);
+		this.table = dom("TABLE", {"id": "board", "border": "1px"}, tbody);
 	},
 	valueAt: function(x, y) {
 		try {
@@ -632,14 +664,11 @@ var Board = {
 							columnBefore = this.columnBeforePlay(appendage);
 						}
 						if (appendage.length > 1) {
-							console.log(appendage);
 							playPlus.appendages.push(appendage);
 						}
 				}
 			}
 			playPlus.row = row;
-			console.log("playPlus");
-			console.log(playPlus);
 			return playPlus;
 		}
 		var columnAfter = this.columnAfterPlay(column);
@@ -672,8 +701,6 @@ var Board = {
 				}
 			}
 			playPlus.column = column;
-			console.log("playPlus: ");
-			console.log(playPlus);
 			return playPlus;
 		}
 		// If the play is only one letter
@@ -785,8 +812,6 @@ var Board = {
 				}
 			});
 		}
-		console.log("playArray");
-		console.log(playArray);
 		return playArray;
 	},
 	// Takes play array (array of array locations) and returns score
@@ -821,22 +846,17 @@ var Board = {
 			row = playPlus.row,
 			column = playPlus.column,
 			appendages = playPlus.appendages;
-		console.log('score appendages');
-		console.log(appendages);
 		if (row) {
 			score += self.scorePlay(row);
-			console.log('row score: ' + self.scorePlay(row));
 		}
 		if (column) {
 			score += self.scorePlay(column);
-			console.log('column score: ' + self.scorePlay(column));
 		}
 		if (appendages.length > 0) {
 			$.each(appendages, function(i, element) {
 				score += self.scorePlay(appendages[i]);
 			});
 		}
-		console.log('total score: ' + score);
 		if (self.findPlay().length == 7) {
 			score += 50;
 		}
@@ -1080,7 +1100,6 @@ var Game = {
 			error = false,
 			blank = false,
 			check = true;
-		console.log(playPlus);
 		if (row)
 			countPlayPlusRow = playPlus.row.length;
 		if (column)
@@ -1149,9 +1168,6 @@ var Game = {
 						var elementLowerCase = element.toLowerCase();
 						if (dictionary( elementLowerCase ) == -1) {
 							check = false;
-							console.log(elementLowerCase);
-							console.log(dictionary(elementLowerCase));
-							console.log("dictionary fail");
 						}
 					});
 					return check;
@@ -1239,7 +1255,6 @@ var Game = {
 				.addClass(boardSpecialsClass)
 				.removeClass('placed-letter')
 				.removeClass('selected-letter');
-			console.log(boardSpecialsClass);
 			this.board.setLock(play[i][0], play[i][1]);
 			this.hand.addLetter(letter);
 			var $space = $('.empty-hand')
@@ -1266,7 +1281,8 @@ var Game = {
 		for (var i = 0; i < play.length; i++) {
 			var x = play[i][0];
 			var y = play[i][1];
-			$('#' + x + "-" + y).removeClass('placed-letter').removeClass('selected-letter').removeClass('TW').removeClass('DW').removeClass('TL').removeClass('DL').removeClass('start');
+			$('#' + x + "-" + y).removeClass('placed-letter selected-letter TW DW TL DL start')
+								.addClass('played-letter');
 		}
 	},
 	updateScore: function(newPoints) {
