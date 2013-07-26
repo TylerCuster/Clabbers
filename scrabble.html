@@ -1,4 +1,44 @@
 <html>
+<meta charset="UTF-8">
+<!--
+
+Can't de-select tile placed on board
+Deselect old tile and select new tile upon click of different tile.
+
+Swap Tiles doesn't include vowels
+Swap tiles crashes after awhile
+
+test
+
+layout
+effects
+
+add stuff to DOM only once
+
+write up error conditions
+
+ajax tutorial
+use ajax to load dictionary after board/hand
+
+Clean up unneeded functions
+Refactor
+
+How to call function as argument?
+Re-write findPlayPlus using function handler
+
+lookup: Handlebars tutorial
+Place Board and Hand using Handlebars templates
+
+Re-write filtering functions findPlay, etc. using Jquery.grep
+
+How do we access the empty Square objects we create when we create a Board? How do we define multiple variables within a loop? eval? Should we even use a Square object or just add the traits we need to the array?
+
+bug reporting e-mail
+
+BUGS:
+TypeError when submitWord is called with no letters played on board
+Non-fatal error when placing two tiles not touching each other
+ -->
 <style>
 body {
 	font-family: sans-serif;
@@ -116,42 +156,6 @@ td.empty-hand {
 
 </style>
 <body>
-<!--
-
-test
-
-layout
-effects
-
-Can't de-select tile placed on board
-Deletes specials text when tile moved from spot on board
-
-Deselect old tile and select new tile upon click of different tile.
-
-write up error conditions
-
-ajax tutorial
-use ajax to load dictionary after board/hand
-
-Clean up unneeded functions
-Refactor
-
-How to call function as argument?
-Re-write findPlayPlus using function handler
-
-lookup: Handlebars tutorial
-Place Board and Hand using Handlebars templates
-
-Re-write filtering functions findPlay, etc. using Jquery.grep
-
-How do we access the empty Square objects we create when we create a Board? How do we define multiple variables within a loop? eval? Should we even use a Square object or just add the traits we need to the array?
-
-bug reporting e-mail
-
-BUGS:
-TypeError when submitWord is called with no letters played on board
-Non-fatal error when placing two tiles not touching each other
- -->
 <script src="jquery-1.9.1.js"></script>
 <script src="ospd.js"></script>
 <script type="text/javascript">
@@ -456,7 +460,7 @@ var Hand = Dictionary.extend({
 	else
 		return null;
 	},
-	// Insert vowel argument for initialHand. Call with vowels = 0 for newHand method. For new games, run with certain vowel limit so that the first integer 'vowels' selections are vowels. Dive into Bag and select letter. If it's a vowel, place in hand and remove from bag. If not, do nothing and try again. Once vowels limit is reached, continue on normally, but now select only consonants.
+	// Insert vowel argument for initialHand. For new games, run with certain vowel limit so that the first integer 'vowels' selections are vowels. Dive into Bag and select letter. If it's a vowel, place in hand and remove from bag. If not, do nothing and try again. Once vowels limit is reached, continue on normally, but now select only consonants.
 	// How to search array for string?
 	initialHand: function(vowels) {
 		var count = 0;
@@ -962,12 +966,7 @@ var Game = {
 		$('<div id="header">CLABBERS, <font size="3"> an anagram variant of Scrabble</font></div>').appendTo(this.place);
 		
 		this.initial();
-		
-		$('<button id="newGame">New game</button>').appendTo(this.place);
-		$('#newGame').on('click', function() {
-			location.reload();
-			});
-			
+
 		$('<button id="newHand">Swap tiles</button>').appendTo(this.place);
 		$('#newHand').on('click', method(this, 'newHand'));
 		
@@ -1051,6 +1050,7 @@ var Game = {
 							.removeClass('placed-letter');
 					}
 					$id.text("  ");
+					$id.text(boardSpecialsText[square[0]][square[1]]);
 					self.letterEvent = null;
 				}
 				// Grab letter from board
@@ -1207,7 +1207,7 @@ var Game = {
 				if (playPlusAppendagesArray.length > 0)
 					message += ", " + playPlusAppendagesArray.join(", ");
 				
-				message += ": " + anagramWords.join(", ");
+				message += " - " + anagramWords.join(", ");
 				
 				$('#messages').text(message)
 					.removeClass('error');
@@ -1230,7 +1230,7 @@ var Game = {
 	},
 	newHand: function() {
 		if (this.board && this.hand && (this.bag.count() >= HAND_SIZE) && (this.board.findPlay().length < 1)) {
-			this.hand = Hand.create(this.bag, 0, null);
+			this.hand = Hand.create(this.bag, 1, null);
 			var hand = this.hand.createArray();
 			for (var i = 0; i < HAND_SIZE; i++) {
 				$square = $('#' + i)
