@@ -38,8 +38,6 @@ body {
 	font-family: sans-serif;
 	font-size: 1em;
 	margin: 0 5%;
-	min-width: 20em;
-	max-width: 80em;
 }
 #header {
 	clear: right;
@@ -54,31 +52,33 @@ table {
 #board {
 	float: left;
 	margin: 0 4em 2em 0;
-	/*width: 750px;*/
+	width: 362.5px;
 }
 #board td{
-	font-size: 10px;
+	font-size: 7px;
 	color: grey;
-	width: 50px;
-	height: 50px;
+	width: 25px;
+	height: 25px;
 	text-align: center;
 }
 #hand {
 	position: relative;	
-	margin: 0em 0em 2em 0em;
+	margin: 0em 0em 1.2em 0em;
+	width: 180px;
 }
 #hand td{
 	text-align: center;
-	font-size: 35px;
-	width: 14.28%;
+	font-size: 17.5px;
+	width: 25px;
+	height: 25px;
 }
 #hand td.empty-hand {
 	background-color: grey;
 }
 #messages {
-	margin: 1em 1em 1em 0;
+	margin: 1.2em 1em 1em 0;
 	font-weight: bold;
-	font-size: 2em;
+	font-size: 1em;
 }
 #score {
 	margin: 0 0 1em 0;
@@ -90,7 +90,7 @@ table {
 }
 button {
 	margin: 0.2em 0.3em 0.2em 0;
-	font-size: 2em;
+	font-size: 10px;
 	border-radius: 0;
 	border: 0.1em solid grey;
 }
@@ -115,6 +115,13 @@ button {
 .start {
 	background-color: pink;
 }
+.text-border {
+	padding: 1em;
+	border-width: 1px;
+	border-style: solid;
+	display: inline;
+	float: left;
+}
 #board td.placed-letter {
 	background-color: green;
 }
@@ -134,15 +141,15 @@ button {
 	background-color: white;
 }
 #board td.placed-letter {
-	font-size: 30px;
+	font-size: 17.5px;
 	color: black;
 }
 #board td.selected-letter {
-	font-size: 30px;
+	font-size: 17.5px;
 	color: black;
 }
 #board td.played-letter {
-	font-size: 30px;
+	font-size: 17.5px;
 	color: black;
 }
 
@@ -951,9 +958,9 @@ var Game = {
 		$('<button id="submitWord">Submit word</button>').appendTo(this.place);
 		$('#submitWord').on('click', method(this, 'submitWord'));
 
-		$('<div id="messages">&nbsp;</div>').appendTo(this.place);
-		$('<div id="score">&nbsp;</div>').appendTo(this.place);
-		$('<div id="scoreString">&nbsp;</div>').appendTo(this.place);
+		$('<p id="messages">&nbsp;</p>').appendTo(this.place);
+		$('<p id="score">&nbsp;</p>').appendTo(this.place);
+		$('<p id="scoreString">&nbsp;</p>').appendTo(this.place);
 		
 		var self = this;
 		
@@ -981,8 +988,10 @@ var Game = {
 							.removeClass('placed-letter')
 							.text(boardSpecialsText[square[0]][square[1]]);
 					}
-					else
-						$id.addClass('empty-hand');
+					else {
+						$id.addClass('empty-hand')
+							.text('  ');
+					}
 					self.letterEvent = null;
 				}
 				// Grabbing letter from hand
@@ -1021,7 +1030,8 @@ var Game = {
 					$id.removeClass("selected-letter");
 					if (self.letterEvent[1].length < 2) {
 						self.hand.removeLetter($id.text());
-						$id.addClass('empty-hand');
+						$id.addClass('empty-hand')
+							.text('  ');
 					}
 					else {
 						square = square.split("-");
@@ -1050,6 +1060,13 @@ var Game = {
 				}
 			});
 		});
+	/*$(window).resize(function() {
+			var $handTd = $('#hand').children().children().children();
+			$handTd.each(function() {
+				var tdWidth = $handTd.width();
+				$handTd.css({'height': tdWidth + 'px'});
+			});
+		}); */
 	},
 	deselectHandler: function(letterEvent) {
 		var $id = $('#' + letterEvent[1]);
@@ -1193,7 +1210,8 @@ var Game = {
 				
 				$('#messages').text(message)
 					.removeClass('error');
-				var sString = $('#scoreString').text(scoreString);
+				var sString = $('#scoreString').text(scoreString)
+					.addClass('text-border');
 				sString.html(sString.html().replace(/\n/g,'<br/>'));
 				self.board.deactivateBoardSpecials(playPlusArray);
 				self.board.setPlay(play);
@@ -1226,6 +1244,7 @@ var Game = {
 			$('#messages').text("To swap tiles, all tiles must be returned to hand").addClass('error');
 	},
 	returnTiles: function() {
+		var self = this;
 		var play = this.board.findPlay();
 		for (var i = 0; i < play.length; i++) {
 			var letter = this.board.valueAt(play[i][0], play[i][1]);
@@ -1237,6 +1256,7 @@ var Game = {
 				.addClass(boardSpecialsClass)
 				.removeClass('placed-letter')
 				.removeClass('selected-letter');
+			self.letterEvent = null;
 			this.board.setLock(play[i][0], play[i][1]);
 			this.hand.addLetter(letter);
 			var $space = $('.empty-hand')
