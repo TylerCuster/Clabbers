@@ -2,20 +2,13 @@
 <meta charset="UTF-8">
 <!--
 
-Can't de-select tile placed on board
-Deselect old tile and select new tile upon click of different tile.
-
-Swap Tiles doesn't include vowels
-Swap tiles crashes after awhile
+write up error conditions
 
 test
 
-layout
-effects
+clabbers scrabble switch
 
 add stuff to DOM only once
-
-write up error conditions
 
 ajax tutorial
 use ajax to load dictionary after board/hand
@@ -38,25 +31,29 @@ bug reporting e-mail
 BUGS:
 TypeError when submitWord is called with no letters played on board
 Non-fatal error when placing two tiles not touching each other
+Fatal error sometimes after hitting swap tiles??
  -->
 <style>
 body {
 	font-family: sans-serif;
-	font-size: 2em;
+	font-size: 1em;
 	margin: 0 5%;
 	min-width: 20em;
-	max-width: 90em;
+	max-width: 80em;
 }
 #header {
 	clear: right;
 	height: 1em;
-	padding: 1em; 
+	padding: 1em 1em 2em 0em;
 	width: 100%;
-	font-size: 30px;
+	font-size: 2em;
+}
+table {
+	table-layout: fixed;
 }
 #board {
 	float: left;
-	margin-right: 50px;
+	margin: 0 4em 2em 0;
 	/*width: 750px;*/
 }
 #board td{
@@ -66,41 +63,36 @@ body {
 	height: 50px;
 	text-align: center;
 }
-#sidebar {
-	width: 200px;
-	width: 30%;
-}
 #hand {
-	position: relative;
-	margin-top: 10px;
-	margin-bottom: 10px;
-	/*width: 358px;*/
+	position: relative;	
+	margin: 0em 0em 2em 0em;
 }
 #hand td{
-	width: 50px;
-	height: 50px;
 	text-align: center;
-	font-size: 30px;
+	font-size: 35px;
+	width: 14.28%;
+}
+#hand td.empty-hand {
+	background-color: grey;
 }
 #messages {
-	margin: 10px;
+	margin: 1em 1em 1em 0;
 	font-weight: bold;
+	font-size: 2em;
 }
 #score {
-	margin: 10px;
+	margin: 0 0 1em 0;
 	font-weight: bold;
 }
 #scoreString {
-	margin: 10px;
+	margin: 0 1em 1em 0;
 	font-weight: bold;
 }
 button {
-	margin-right: 5px;
-}
-td.empty-hand {
-	background-color: grey;
-	width: 52px;
-	height: 52px;
+	margin: 0.2em 0.3em 0.2em 0;
+	font-size: 2em;
+	border-radius: 0;
+	border: 0.1em solid grey;
 }
 .error {
 	color: red;
@@ -123,14 +115,14 @@ td.empty-hand {
 .start {
 	background-color: pink;
 }
+#board td.placed-letter {
+	background-color: green;
+}
 #board td:hover {
 	background-color: orange;	
 }
 #hand td:hover {
 	background-color: orange;	
-}
-#board td.placed-letter {
-	background-color: green;
 }
 #hand td.selected-letter {
 	background-color: red;
@@ -418,12 +410,12 @@ var Bag = Dictionary.extend({
 });
 
 var Hand = Dictionary.extend({
-	construct: function(bag, vowels, startValues) {
+	construct: function(bag, startValues) {
 		this.bag = bag;
 		this.template = $('#hand-template');
 		this.values = startValues || {};
 		if (startValues == null)
-			this.initialHand(vowels);
+			this.initialHand();
 		var copy = this.createArray();
 		var tbody = dom("TBODY");
 		var tableRow = dom("TR");
@@ -460,29 +452,12 @@ var Hand = Dictionary.extend({
 	else
 		return null;
 	},
-	// Insert vowel argument for initialHand. For new games, run with certain vowel limit so that the first integer 'vowels' selections are vowels. Dive into Bag and select letter. If it's a vowel, place in hand and remove from bag. If not, do nothing and try again. Once vowels limit is reached, continue on normally, but now select only consonants.
-	// How to search array for string?
-	initialHand: function(vowels) {
-		var count = 0;
-		for (var i = 0; i < HAND_SIZE-vowels; i++) {
-			while (count < vowels) {
-				var letter = this.bag.selectRandomLetter();
-				if (LETTER_VOWELS.indexOf(letter) != -1) {
-						this.addLetter(letter);
-						this.bag.remove(letter);
-						count += 1;
-					}
-				}
-			var check = true;
-			while (check) {
-				var letter = this.bag.selectRandomLetter();
-				if (LETTER_VOWELS.indexOf(letter) == -1) {
-					this.addLetter(letter);
-					this.bag.remove(letter);
-					check = false;
-				}
+	initialHand: function() {
+		for (var i = 0; i < HAND_SIZE; i++) {
+			var letter = this.bag.selectRandomLetter();
+			this.addLetter(letter);
+			this.bag.remove(letter);
 			}
-		}
 	},
 	removeLetter: function(letter) {
 		if (this.contains(letter) == false || (this.lookup(letter) < 0))
@@ -963,7 +938,7 @@ var Game = {
 		this.score = 0;
 		this.letterEvent = null;
 		
-		$('<div id="header">CLABBERS, <font size="3"> an anagram variant of Scrabble</font></div>').appendTo(this.place);
+		$('<div id="header">C L A B B E R S <font size="3"> an anagram variant of Scrabble</font></div>').appendTo(this.place);
 		
 		this.initial();
 
@@ -976,8 +951,8 @@ var Game = {
 		$('<button id="submitWord">Submit word</button>').appendTo(this.place);
 		$('#submitWord').on('click', method(this, 'submitWord'));
 
-		$('<div id="score">&nbsp;</div>').appendTo(this.place);
 		$('<div id="messages">&nbsp;</div>').appendTo(this.place);
+		$('<div id="score">&nbsp;</div>').appendTo(this.place);
 		$('<div id="scoreString">&nbsp;</div>').appendTo(this.place);
 		
 		var self = this;
@@ -1003,7 +978,8 @@ var Game = {
 						self.board.removeLetter(square[0], square[1]);
 						self.board.setLock(square[0], square[1], true);
 						$id.addClass('empty')
-							.removeClass('placed-letter');
+							.removeClass('placed-letter')
+							.text(boardSpecialsText[square[0]][square[1]]);
 					}
 					else
 						$id.addClass('empty-hand');
@@ -1014,9 +990,14 @@ var Game = {
 					$this.addClass("selected-letter");
 					self.letterEvent = [$this.text(), $this.attr("id")];
 				}
-				else if (self.letterEvent && $this.text() == self.letterEvent[0]) {
+				else if (self.letterEvent && $this.hasClass('selected-letter')) {
 					self.deselectHandler(self.letterEvent);
 					self.letterEvent = null;
+				}
+				else if (self.letterEvent && !($this.hasClass('selected-letter') || $this.hasClass('empty'))) {
+					self.deselectHandler(self.letterEvent);
+					$this.addClass("selected-letter");
+					self.letterEvent = [$this.text(), $this.attr("id")];
 				}
 			});
 		});
@@ -1049,8 +1030,8 @@ var Game = {
 						$id.addClass('empty')
 							.removeClass('placed-letter');
 					}
-					$id.text("  ");
-					$id.text(boardSpecialsText[square[0]][square[1]]);
+					$id.text("  ")
+						.text(boardSpecialsText[square[0]][square[1]]);
 					self.letterEvent = null;
 				}
 				// Grab letter from board
@@ -1058,19 +1039,20 @@ var Game = {
 					self.letterEvent = [$this.text(), $this.attr("id")];
 					$this.addClass("selected-letter");
 				}
-				else if (self.letterEvent && (self.board.getLock(square[0], square[1]) == false)) {
-					
-				}
-				else if (self.letterEvent && $this.text() == self.letterEvent[0]) {
+				else if (self.letterEvent && $this.hasClass('selected-letter')) {
 					self.deselectHandler(self.letterEvent);
 					self.letterEvent = null;
 				}				
+				else if (self.letterEvent && !($this.hasClass('selected-letter') || $this.hasClass('empty') || self.board.getLock(square[0], square[1]))) {
+					self.deselectHandler(self.letterEvent);
+					$this.addClass("selected-letter");
+					self.letterEvent = [$this.text(), $this.attr("id")];
+				}
 			});
 		});
 	},
 	deselectHandler: function(letterEvent) {
 		var $id = $('#' + letterEvent[1]);
-		$id.text(letterEvent[0]);
 		$id.removeClass("selected-letter");
 	},
 	initial: function() {
@@ -1083,7 +1065,7 @@ var Game = {
 		this.board = Board.create(BOARD_WIDTH, BOARD_HEIGHT);
 		this.board.placeToPage(this.place);
 		this.bag = Bag.create();
-		this.hand = Hand.create(this.bag, 2, null);
+		this.hand = Hand.create(this.bag, null);
 		this.hand.placeToPage(this.place);
 	},
 	submitWord: function() {
@@ -1154,7 +1136,7 @@ var Game = {
 				var anagramWords = [];
 				anagramsCheck = false;
 				$.each(wordList, function( i, element ) {
-					var anagramWord = prompt("Enter intended dictionary word for the anagram " + String(element) + ": ");
+					var anagramWord = prompt("Enter your intended dictionary word for the anagram " + String(element) + ": ");
 					anagramWord = anagramWord.toUpperCase();
 					anagramWords.push( anagramWord );
 				});
@@ -1230,7 +1212,7 @@ var Game = {
 	},
 	newHand: function() {
 		if (this.board && this.hand && (this.bag.count() >= HAND_SIZE) && (this.board.findPlay().length < 1)) {
-			this.hand = Hand.create(this.bag, 1, null);
+			this.hand = Hand.create(this.bag, null);
 			var hand = this.hand.createArray();
 			for (var i = 0; i < HAND_SIZE; i++) {
 				$square = $('#' + i)
@@ -1311,7 +1293,7 @@ function rowOrColumnTests() {
 			(testBoard.rowOrColumn([[0, 1]]) == "single");
 }
 function isValidHandTests(testBag) {
-	var testHand = Hand.create(testBag, 0, {"B": 1, "A": 2, "Y": 1});
+	var testHand = Hand.create(testBag, {"B": 1, "A": 2, "Y": 1});
 	return testHand.isValidHand("BABY") == false &&
 		testHand.isValidHand("BAY") ==  true &&
 		testHand.isValidHand("BY") == true &&
