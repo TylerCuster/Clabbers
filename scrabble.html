@@ -1,13 +1,15 @@
 <html> 
 <!DOCTYPE HTML>
 <meta charset="UTF-8">
-<!--
+<!-- 
 
-write up error conditions
-
-test
+use simplemodal prompt instead of js prompt
 
 clabbers scrabble switch
+
+seperate html/js/css
+
+test
 
 add stuff to DOM only once
 
@@ -53,37 +55,36 @@ table {
 #board {
 	float: left;
 	margin: 0 4em 2em 0;
-	width: 362.5px;
 }
 #board td{
-	font-size: 7px;
+	font-size: 10px;
 	color: grey;
-	width: 25px;
-	height: 25px;
+	width: 30px;
+	height: 30px;
 	text-align: center;
 }
 #hand {
 	position: relative;	
 	margin: 0em 0em 1.2em 0em;
-	width: 180px;
+	width: 270px;
 }
 #hand td{
 	text-align: center;
-	font-size: 17.5px;
-	width: 25px;
-	height: 25px;
+	font-size: 20px;
+	width: 30px;
+	height: 30px;
 }
 #hand td.empty-hand {
-	background-color: grey;
+	background-color: white;
 }
 #score {
 	margin: 1em 0 1em 0;
 	font-weight: bold;
 }
 #messages {
-	margin: 1.2em 1em 1em 0;
+	margin: 1.2em 1em 1.2em 0;
 	font-weight: bold;
-	font-size: 1em;
+	font-size: 25px;
 }
 #scoreString {
 	margin: 0 1em 1em 0;
@@ -97,9 +98,10 @@ button {
 }
 .error {
 	color: red;
+	font-size: 10px;
 }
 .empty {
-	background-color: grey;
+	background-color: white;
 }
 .TW {
 	background-color: #BC8F8F;
@@ -125,10 +127,13 @@ button {
 	text-align: right;
 }
 #board td.placed-letter {
+	font-size: 20px;
 	background-color: green;
+	color: white;
 }
 #board td:hover {
 	background-color: orange;	
+	color: black;
 }
 #hand td:hover {
 	background-color: orange;	
@@ -138,21 +143,13 @@ button {
 }
 #board td.selected-letter {
 	background-color: red;
-}
-#board td.played-letter {
-	background-color: white;
-}
-#board td.placed-letter {
-	font-size: 17.5px;
-	color: black;
-}
-#board td.selected-letter {
-	font-size: 17.5px;
+	font-size: 20px;
 	color: black;
 }
 #board td.played-letter {
-	font-size: 17.5px;
-	color: black;
+	font-size: 20px;
+	background-color: grey;
+	color: white;
 }
 
 </style>
@@ -840,6 +837,9 @@ var Board = {
 		if (column) {
 			score += self.scorePlay(column);
 		}
+		if (appendages == undefined) {
+			return score;
+		}
 		if (appendages.length > 0) {
 			$.each(appendages, function(i, element) {
 				score += self.scorePlay(appendages[i]);
@@ -1096,7 +1096,7 @@ var Game = {
 			self = this,
 			error = false,
 			blank = false,
-			check = true;
+			checkForOneLetter = true;
 		if (row)
 			countPlayPlusRow = playPlus.row.length;
 		if (column)
@@ -1108,12 +1108,12 @@ var Game = {
 			if (rowOrColumn == column)
 				var countPlayPlus = countPlayPlusColumn;
 			if (countPlayPlus == countPlay && self.first == false && playPlus.appendages.length < 1) {
-					check = false;
+					checkForOneLetter = false;
 			}
 			var word = self.board.boardToWord(rowOrColumn);
 			var scoreString = "Play score: " + score + "\n\n";
-			scoreString += self.board.scorePlayPlusString(playPlus)
-			if (word.contains("*")) {
+			scoreString += self.board.scorePlayPlusString(playPlus);
+			if (word.indexOf("*") != -1) {
 				var blankLetter = prompt("Enter letter for blank (*) tile");
 				blank = true;
 				}
@@ -1145,6 +1145,7 @@ var Game = {
 			}
 			
 			var anagramsCheck = true;
+			var validWordCheck = false;
 			if (anagramsOn) {
 				var wordList = playPlusAppendages(playPlus);
 				wordList.unshift(word);
@@ -1152,27 +1153,43 @@ var Game = {
 				anagramsCheck = false;
 				$.each(wordList, function( i, element ) {
 					var anagramWord = prompt("Enter your intended dictionary word for the anagram " + String(element) + ": ");
-					anagramWord = anagramWord.toUpperCase();
-					anagramWords.push( anagramWord );
+					if (typeof(anagramWord) == "string") {
+						anagramWord = anagramWord.toUpperCase();
+						anagramWords.push( anagramWord );
+					}
 				});
 				
 				var validAnagrams = function( anagramWords ) {
 					var check = true;
+					if (anagramWords.length < 1) {
+						check = false;
+					}
 					$.each(anagramWords, function( i, element ) {
 						if ((anagram( wordList[i], element )) == false) {
-							check = false;
-						}
-						var elementLowerCase = element.toLowerCase();
-						if (dictionary( elementLowerCase ) == -1) {
 							check = false;
 						}
 					});
 					return check;
 				}
 				
-				if (validAnagrams( anagramWords ) == true) {
+				var validWord = function(anagramWords) {
+					var check = true;
+					$.each(anagramWords, function( i, element ) {
+						var elementLowerCase = element.toLowerCase();
+						if (dictionary(elementLowerCase) == -1) {
+							check = false;
+						}
+					});
+					return check;
+				}
+				
+				if (validAnagrams(anagramWords) == true) {
 					anagramsCheck = true;
 				}
+				if (validWord(anagramWords) == true) {
+					validWordCheck = true;
+				}
+			
 			}			
 			
 			var checkStart = function ( playPlusArray ) {
@@ -1192,14 +1209,14 @@ var Game = {
 				}
 			}
 			
-			if (self.board.isInline(rowOrColumn) && check && self.board.isInSameRowOrColumn(play) && countPlay <= countUnlockedPlayPlus && !(word.contains('*')) && anagramsCheck && start) {
+			if (self.board.isInline(rowOrColumn) && checkForOneLetter && self.board.isInSameRowOrColumn(play) && countPlay <= countUnlockedPlayPlus && !(word.indexOf("*") != -1) && anagramsCheck && validWordCheck && start) {
 				self.letterEvent = null;
 				self.replenishHand(countPlay);
 				self.setPlayStyle(play);
 				self.first = false;
 			
 				self.updateScore(score);
-				var message = "Valid play: " + word,
+				var message = "Valid play: 	" + word,
 					playPlusAppendagesArray = playPlusAppendages(playPlus);				
 				if (playPlusAppendagesArray.length > 0)
 					message += ", " + playPlusAppendagesArray.join(", ");
@@ -1216,7 +1233,23 @@ var Game = {
 			}
 			else {
 				error = true;
-				$('#messages').text("Invalid word")
+				var errorText = "Invalid play. ";
+				if (checkForOneLetter == false) {
+					errorText += "Your play must be connected to a previously played letter and in a consecutive line. ";
+				}
+				if (self.board.isInline(rowOrColumn) == false) { 
+					errorText += "Tiles must be played in a consecutive straight line. ";
+				}
+				if (anagramsCheck == false) {
+					errorText += "The word you entered wasn't an anagram of the word on the board. ";
+				}
+				if (start == false) {
+					errorText += "First play must include the starting square ST ";
+				}
+				if (validWordCheck == false) {
+					errorText += "The word you typed is not in the dictionary. ";
+				}
+				$('#messages').text(errorText)
 								.addClass('error');
 				$('#scoreString').text("");
 			}
