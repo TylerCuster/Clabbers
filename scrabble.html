@@ -1,13 +1,9 @@
+<!DOCTYPE html>
+
 <html> 
-<!DOCTYPE HTML>
-<meta charset="UTF-8">
 <!-- 
 
-use simplemodal prompt instead of js prompt
-
 clabbers scrabble switch
-
-seperate html/js/css
 
 test
 
@@ -36,143 +32,34 @@ TypeError when submitWord is called with no letters played on board
 Non-fatal error when placing two tiles not touching each other
 Fatal error sometimes after hitting swap tiles??
  -->
-<style>
-body {
-	font-family: sans-serif;
-	font-size: 1em;
-	margin: 0 5%;
-}
-#header {
-	clear: right;
-	height: 1em;
-	padding: 1em 1em 2em 0em;
-	width: 100%;
-	font-size: 2em;
-}
-table {
-	table-layout: fixed;
-}
-#board {
-	float: left;
-	margin: 0 4em 2em 0;
-}
-#board td{
-	font-size: 10px;
-	color: grey;
-	width: 30px;
-	height: 30px;
-	text-align: center;
-}
-#hand {
-	position: relative;	
-	margin: 0em 0em 1.2em 0em;
-	width: 270px;
-}
-#hand td{
-	text-align: center;
-	font-size: 20px;
-	width: 30px;
-	height: 30px;
-}
-#hand td.empty-hand {
-	background-color: white;
-}
-#score {
-	margin: 1em 0 1em 0;
-	font-weight: bold;
-}
-#messages {
-	margin: 1.2em 1em 1.2em 0;
-	font-weight: bold;
-	font-size: 25px;
-}
-#scoreString {
-	margin: 0 1em 1em 0;
-	font-weight: bold;
-}
-button {
-	margin: 0.2em 0.3em 0.2em 0;
-	font-size: 10px;
-	border-radius: 0;
-	border: 0.1em solid grey;
-}
-.error {
-	color: red;
-	font-size: 10px;
-}
-.empty {
-	background-color: white;
-}
-.TW {
-	background-color: #BC8F8F;
-}
-.DW {
-	background-color: #CFAFAF;
-}
-.TL {
-	background-color: #E2CFCF;
-}
-.DL {
-	background-color: #F5EFEF;
-}
-.start {
-	background-color: pink;
-}
-.text-border {
-	padding: 1em;
-	border-width: 1px;
-	border-style: solid;
-	display: inline;
-	float: left;
-	text-align: right;
-}
-#board td.placed-letter {
-	font-size: 20px;
-	background-color: green;
-	color: white;
-}
-#board td:hover {
-	background-color: orange;	
-	color: black;
-}
-#hand td:hover {
-	background-color: orange;	
-}
-#hand td.selected-letter {
-	background-color: red;
-}
-#board td.selected-letter {
-	background-color: red;
-	font-size: 20px;
-	color: black;
-}
-#board td.played-letter {
-	font-size: 20px;
-	background-color: grey;
-	color: white;
-}
+ 
+<head>
+	<link rel="stylesheet" type="text/css" href="static/style.css" />
+	<title>Clabbers</title>
+	<meta charset="UTF-8">
+</head>
 
-</style>
 <body>
-<script src="jquery-1.9.1.js"></script>
-<script src="ospd.js"></script>
+
+<script src="static/jquery-1.9.1.js"></script>
+<script src="static/ospd.js"></script>
 <script type="text/javascript">
 
 $(document).ready(function() {
 
-var HAND_SIZE = 7;
-var BOARD_HEIGHT = 15;
-var BOARD_WIDTH = 15;
+var HAND_SIZE = 7,
+BOARD_HEIGHT = 15,
+BOARD_WIDTH = 15,
 
-var LETTER_VALUES = {"A": 1, "B": 3, "C": 3, "D": 2, "E": 1, "F": 4, "G": 2, "H": 4, "I": 1, "J": 8, "K": 5, "L": 1, "M": 3, "N": 1, "O": 1, "P": 3, "Q": 10, "R": 1, "S": 1, "T": 1, "U": 1, "V": 4, "W": 4, "X": 8, "Y": 4, "Z": 10, "*": 0};
+LETTER_VALUES = {"A": 1, "B": 3, "C": 3, "D": 2, "E": 1, "F": 4, "G": 2, "H": 4, "I": 1, "J": 8, "K": 5, "L": 1, "M": 3, "N": 1, "O": 1, "P": 3, "Q": 10, "R": 1, "S": 1, "T": 1, "U": 1, "V": 4, "W": 4, "X": 8, "Y": 4, "Z": 10, "*": 0},
 
-var LETTER_COUNTS = {"A": 9, "B": 2, "C": 2, "D": 4, "E": 12, "F": 2, "G": 3, "H": 2, "I": 9, "J": 1, "K": 1, "L": 4, "M": 2, "N": 6, "O": 8, "P": 2, "Q": 1, "R": 6, "S": 4, "T": 6, "U": 4, "V": 2, "W": 2, "X": 1, "Y": 2, "Z": 1, "*": 2};
+LETTER_COUNTS = {"A": 9, "B": 2, "C": 2, "D": 4, "E": 12, "F": 2, "G": 3, "H": 2, "I": 9, "J": 1, "K": 1, "L": 4, "M": 2, "N": 6, "O": 8, "P": 2, "Q": 1, "R": 6, "S": 4, "T": 6, "U": 4, "V": 2, "W": 2, "X": 1, "Y": 2, "Z": 1, "*": 2},
 
-var LETTER_VOWELS = ["A", "E", "I", "O", "U"];
+LETTER_VOWELS = ["A", "E", "I", "O", "U"],
 
-var anagramsOn = true;
+anagramsOn = true,
 
-var boardSpecialsText = [
+boardSpecialsText = [
 	['TW', '   ', '   ', 'DL', '   ', '   ', '   ', 'TW', '   ', '   ', '   ', 'DL', '   ', '   ', 'TW'],
 	['   ', 'DW', '   ', '   ', '   ', 'TL', '   ', '   ', '   ', 'TL', '   ', '   ', '   ', 'DW', '   '],
 	['   ', '   ', 'DW', '   ', '   ', '   ', 'DL', '   ', 'DL', '   ', '   ', '   ', 'DW', '   ', '   '],
@@ -188,28 +75,8 @@ var boardSpecialsText = [
 	['   ', '   ', 'DW', '   ', '   ', '   ', 'DL', '   ', 'DL', '   ', '   ', '   ', 'DW', '   ', '   '],
 	['   ', 'DW', '   ', '   ', '   ', 'TL', '   ', '   ', '   ', 'TL', '   ', '   ', '   ', 'DW', '   '],
 	['TW', '   ', '   ', 'DL', '   ', '   ', '   ', 'TW', '   ', '   ', '   ', 'DL', '   ', '   ', 'TW']
-];
-/*
-var boardSpecialsText = [
-	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
-	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
-	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
-	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
-	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
-	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
-	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
-	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
-	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
-	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
-	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
-	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
-	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
-	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
-	['   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   ', '   '],
-];
-*/
-
-var boardSpecials = [
+],
+boardSpecials = [
 	['TW', 'empty', 'empty', 'DL', 'empty', 'empty', 'empty', 'TW', 'empty', 'empty', 'empty', 'DL', 'empty', 'empty', 'TW'],
 	['empty', 'DW', 'empty', 'empty', 'empty', 'TL', 'empty', 'empty', 'empty', 'TL', 'empty', 'empty', 'empty', 'DW', 'empty'],
 	['empty', 'empty', 'DW', 'empty', 'empty', 'empty', 'DL', 'empty', 'DL', 'empty', 'empty', 'empty', 'DW', 'empty', 'empty'],
@@ -225,9 +92,8 @@ var boardSpecials = [
 	['empty', 'empty', 'DW', 'empty', 'empty', 'empty', 'DL', 'empty', 'DL', 'empty', 'empty', 'empty', 'DW', 'empty', 'empty'],
 	['empty', 'DW', 'empty', 'empty', 'empty', 'TL', 'empty', 'empty', 'empty', 'TL', 'empty', 'empty', 'empty', 'DW', 'empty'],
 	['TW', 'empty', 'empty', 'DL', 'empty', 'empty', 'empty', 'TW', 'empty', 'empty', 'empty', 'DL', 'empty', 'empty', 'TW']
-];
-	
-var boardSpecialsCheck = function() {
+],
+boardSpecialsCheck = function () {
 	for (var i = 0; i < boardSpecials.length; i++) {
 		if (boardSpecials[i].length != BOARD_WIDTH)
 			return false;
@@ -235,7 +101,7 @@ var boardSpecialsCheck = function() {
 	if (boardSpecials.length != BOARD_HEIGHT)
 		return false;
 	return true;
-}
+};
 console.log('boardSpecialsCheck: ' + boardSpecialsCheck());
 
 // How many identical values between array1 and array2 where array1 and array2 are composed of arrays of length two
@@ -418,13 +284,12 @@ var Bag = Dictionary.extend({
 var Hand = Dictionary.extend({
 	construct: function(bag, startValues) {
 		this.bag = bag;
-		this.template = $('#hand-template');
 		this.values = startValues || {};
 		if (startValues == null)
 			this.initialHand();
-		var copy = this.createArray();
-		var tbody = dom("TBODY");
-		var tableRow = dom("TR");
+		var copy = this.createArray(),
+			tbody = dom("TBODY");
+			tableRow = dom("TR");
 		tbody.appendChild(tableRow);
 		for (var i = 0; i < HAND_SIZE; i++) {
 			if (copy[i]) {
@@ -522,13 +387,13 @@ var Board = {
 	construct: function(width, height) {
 		this.width = width;
 		this.height = height;
-		var lock = true;
+		var lock = true,
+			tbody = dom("TBODY");
 
 		this.board = [];
-		var tbody = dom("TBODY");
 		for (var y = 0; y < this.height; y++) {
-			var row = [];
-			var tableRow = dom("TR");
+			var row = [],
+				tableRow = dom("TR");
 			for (var x = 0; x < this.width; x++) {
 				var tableSquare = dom("TD", {"id": String(x) + "-" + String(y), "class": boardSpecials[y][x]}, boardSpecialsText[y][x]);
 				tableRow.appendChild(tableSquare);
@@ -750,8 +615,8 @@ var Board = {
 	// Sets play as permanent; i.e., 'locks' tiles on board
 	setPlay: function(play) {
 		for (var i = 0; i < play.length; i++) {
-			var x = play[i][0];
-			var y = play[i][1];
+			var x = play[i][0],
+				y = play[i][1];
 			this.setLock(x, y, true);
 			//this.board[y][x][0] = true;
 		}
@@ -761,16 +626,16 @@ var Board = {
 		var count = 0;
 		if (playPlus.row) {
 			for (var i = 0; i < playPlus.row.length; i++) {
-				var x = playPlus.row[i][0];
-				var y = playPlus.row[i][1];
+				var x = playPlus.row[i][0],
+					y = playPlus.row[i][1];
 				if (this.getLock(x, y) == false)
 					count += 1;
 			}
 		}
 		if (playPlus.column) {
 			for (var i = 0; i < playPlus.column.length; i++) {
-				var x = playPlus.column[i][0];
-				var y = playPlus.column[i][1];
+				var x = playPlus.column[i][0],
+					y = playPlus.column[i][1];
 				if (this.getLock(x, y) == false)
 					count += 1;
 			}
@@ -910,10 +775,10 @@ var Board = {
 	},
 	// Takes array of arrays in the form [x, y]. Return string from letters placed on board.
 	boardToWord: function(play) {
-		word = "";
+		var word = "";
 		for (var i = 0; i < play.length; i++) {
-			var x = play[i][0];
-			var y = play[i][1];
+			var x = play[i][0],
+				y = play[i][1];
 			word += this.board[y][x][1];
 		}
 		return word;
@@ -1058,13 +923,6 @@ var Game = {
 				}
 			});
 		});
-	/*$(window).resize(function() {
-			var $handTd = $('#hand').children().children().children();
-			$handTd.each(function() {
-				var tdWidth = $handTd.width();
-				$handTd.css({'height': tdWidth + 'px'});
-			});
-		}); */
 	},
 	deselectHandler: function(letterEvent) {
 		var $id = $('#' + letterEvent[1]);
@@ -1094,7 +952,6 @@ var Game = {
 			column = playPlus.column,
 			appendages = playPlus.appendages,
 			self = this,
-			error = false,
 			blank = false,
 			checkForOneLetter = true;
 		if (row)
@@ -1110,8 +967,8 @@ var Game = {
 			if (countPlayPlus == countPlay && self.first == false && playPlus.appendages.length < 1) {
 					checkForOneLetter = false;
 			}
-			var word = self.board.boardToWord(rowOrColumn);
-			var scoreString = "Play score: " + score + "\n\n";
+			var word = self.board.boardToWord(rowOrColumn),
+				scoreString = "Play score: " + score + "\n\n";
 			scoreString += self.board.scorePlayPlusString(playPlus);
 			if (word.indexOf("*") != -1) {
 				var blankLetter = prompt("Enter letter for blank (*) tile");
@@ -1152,7 +1009,7 @@ var Game = {
 				var anagramWords = [];
 				anagramsCheck = false;
 				$.each(wordList, function( i, element ) {
-					var anagramWord = prompt("Enter your intended dictionary word for the anagram " + String(element) + ": ");
+					var anagramWord = prompt("Enter your intended dictionary word for the anagram " + String(element) + ": "); 
 					if (typeof(anagramWord) == "string") {
 						anagramWord = anagramWord.toUpperCase();
 						anagramWords.push( anagramWord );
@@ -1232,7 +1089,6 @@ var Game = {
 				self.board.setPlay(play);
 			}
 			else {
-				error = true;
 				var errorText = "Invalid play. ";
 				if (checkForOneLetter == false) {
 					errorText += "Your play must be connected to a previously played letter and in a consecutive line. ";
@@ -1249,9 +1105,11 @@ var Game = {
 				if (validWordCheck == false) {
 					errorText += "The word you typed is not in the dictionary. ";
 				}
+				
 				$('#messages').text(errorText)
 								.addClass('error');
-				$('#scoreString').text("");
+				$('#scoreString').text("")
+									.removeClass('text-border');
 			}
 		}
 		if (row)
@@ -1280,20 +1138,20 @@ var Game = {
 		for (var i = 0; i < play.length; i++) {
 			var letter = this.board.valueAt(play[i][0], play[i][1]);
 			this.board.removeLetter(play[i][0], play[i][1]);
-			var boardSpecialsTxt = boardSpecialsText[play[i][0]][play[i][1]];
-			var boardSpecialsClass = String(boardSpecials[play[i][0]][play[i][1]]);
-			var $square = $('#' + play[i][0] + "-" + play[i][1])
-				.text(boardSpecialsTxt)
-				.addClass(boardSpecialsClass)
-				.removeClass('placed-letter')
-				.removeClass('selected-letter');
+			var boardSpecialsTxt = boardSpecialsText[play[i][0]][play[i][1]],
+				boardSpecialsClass = String(boardSpecials[play[i][0]][play[i][1]]),
+				$square = $('#' + play[i][0] + "-" + play[i][1])
+							.text(boardSpecialsTxt)
+							.addClass(boardSpecialsClass)
+							.removeClass('placed-letter')
+							.removeClass('selected-letter');
 			self.letterEvent = null;
 			this.board.setLock(play[i][0], play[i][1]);
 			this.hand.addLetter(letter);
-			var $space = $('.empty-hand')
-										.first()
-										.text(letter)
-										.removeClass('empty-hand');
+			$('.empty-hand')
+				.first()
+				.text(letter)
+				.removeClass('empty-hand');
 		}
 		//this.setPlayStyle(play);
 	},	
@@ -1303,17 +1161,17 @@ var Game = {
 			if (!letter) {
 				$('#messages').text("Bag out of letters");
 			}
-			var $space = $('.empty-hand')
-										.first()
-										.text(letter)
-										.removeClass('empty-hand');
+			$('.empty-hand')
+				.first()
+				.text(letter)
+				.removeClass('empty-hand');
 		}
 	},
 	// Removes styling for letters placed on board during play
 	setPlayStyle: function(play) {
 		for (var i = 0; i < play.length; i++) {
-			var x = play[i][0];
-			var y = play[i][1];
+			var x = play[i][0],
+				y = play[i][1];
 			$('#' + x + "-" + y).removeClass('placed-letter selected-letter TW DW TL DL start')
 								.addClass('played-letter');
 		}
