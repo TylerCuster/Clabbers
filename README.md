@@ -18,4 +18,4 @@ Then click the button Submit Word and type in the word for which you want to sea
 Code
 ----
 
-100% front-end using JavaScript and JQuery.
+100% front-end using JavaScript and jQuery.
