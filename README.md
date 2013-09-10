@@ -19,3 +19,5 @@ Code
 ----
 
 100% front-end using JavaScript and jQuery.
+
+I wrote the entirety of the code except the helper functions credited in the comments to Marijn Haverbeke from the text Eloquent JavaScript.
